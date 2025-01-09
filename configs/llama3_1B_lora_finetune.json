@@ -3,7 +3,7 @@
     "lora_rank": 16,
     "lora_alpha": 32,
     "learning_rate": 5e-5,
-    "batch_size": 32,
+    "batch_size": 16,
     "num_epochs": 10,
     "output_dir": "./fine_tuned_checkpoints",
     "save_steps": 200,

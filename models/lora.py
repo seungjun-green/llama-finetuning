@@ -25,7 +25,7 @@ class LoRALinear(nn.Module):
         return frozen_out + (self.alpha / self.rank) * lora_out
 
 def add_lora_to_model(model, rank=8, alpha=16.0):
-    # Replace selected nn.Linear layers (e.g., q_proj, v_proj) with LoRA layers.
+    # Replace selected nn.Linear layers (e.g q_proj, v_proj) with LoRA layers.
     def get_parent_module(model, module_name):
         parts = module_name.split(".")
         current = model
