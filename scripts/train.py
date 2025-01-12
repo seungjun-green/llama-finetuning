@@ -1,20 +1,17 @@
 import os
-import torch
 from torch.optim import Adam
-from torch.utils.data import DataLoader
 from transformers import get_scheduler
-from configs.config import FineTuneConfig
 from configs.config import FineTuneConfig
 from models.base_model import load_base_model
 from models.lora import add_lora_to_model
 from utils.helpers import count_params
 from models.loss import get_loss_function
-from data.data import create_dataloader
+from data.data import create_squad_dataloader
 
 
-def fine_tune(config_filepath):
+def fine_tune(config_filepath, **kwargs):
     # load config
-    config = FineTuneConfig(config_path=config_filepath)
+    config = FineTuneConfig(config_path=config_filepath, **kwargs)
 
     # load tokenizer and model
     tokenizer, model = load_base_model(config.base_model_name)
@@ -44,19 +41,12 @@ def fine_tune(config_filepath):
 
     # Fine-tuning loop
     model.train()
-    input_texts = [
-        "Question: What is the capital of France? Context: France is a country in Europe. Its capital city is Paris.",
-        "Question: Who wrote 'To Kill a Mockingbird'? Context: 'To Kill a Mockingbird' is a novel written by Harper Lee."
-    ]
+        
+    train_dataloader = create_squad_dataloader(config.train_file_path, tokenizer, config.batch_size, config.max_length)
+    dev_dataloader = create_squad_dataloader(config.dev_file_path, tokenizer, config.batch_size, config.max_length)
     
-    target_texts = [
-        "Paris",
-        "Harper Lee"
-    ]
-    
-    dataloader = create_dataloader(input_texts, target_texts, tokenizer, config.batch_size, config.max_seq_length)
     for epoch in range(config.num_epochs):
-        for step, (input_ids, labels) in enumerate(dataloader):
+        for step, (input_ids, labels) in enumerate(train_dataloader):
             print(input_ids.shape)
             print(labels.shape)
             outputs = model(input_ids=input_ids, labels=labels)
