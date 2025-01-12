@@ -63,10 +63,7 @@ def fine_tune(config_filepath):
             logits = outputs.logits # (N, seq_length, vocab_size)
             # logits.view(-1, logits.size(-1)): (N*seq_length, vocab_size)
             # labels.view(-1): (N*seq_length,)
-            print(logits.shape)
-            print(labels.shape)
-            print(logits.view(-1, logits.size(-1)).shape)
-            print(labels.view(-1).shape)
+        
             loss = loss_fn(logits.view(-1, logits.size(-1)), labels.view(-1))
             loss.backward()
 
