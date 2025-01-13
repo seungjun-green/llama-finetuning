@@ -28,6 +28,7 @@ def fine_tune(config_filepath, **kwargs):
 
     # add LoRA layers to the model
     model = add_lora_to_model(model, rank=config.lora_rank, alpha=config.lora_alpha)
+    model.to(device)
 
     # unfreeze lora parameters
     for name, param in model.named_parameters():
