@@ -12,7 +12,8 @@ class SquadFineTuneConfig:
         self.num_epochs = 3
         self.output_dir = "./checkpoints"
         self.log_steps = 1000
-        self.device = "cuda"
+        self.device = "cuda",
+        self.use_fp16 = True,
         self.train_file_path = ""
         self.dev_file_path = ""
         

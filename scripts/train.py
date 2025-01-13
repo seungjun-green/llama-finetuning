@@ -10,6 +10,8 @@ from data.squad_data import create_squad_dataloader
 from utils.checkpoint import checkponit
 from tqdm import tqdm
 import torch
+from torch.cuda.amp import autocast, GradScaler
+
 
 def fine_tune(config_filepath, **kwargs):
     global_min = 10
@@ -40,9 +42,10 @@ def fine_tune(config_filepath, **kwargs):
     print(f"Trainable parameters: {trainable_params}")
 
     loss_fn = get_loss_function(loss_type="cross_entropy")
-    
-    # work on dataloader
 
+    use_fp16 = getattr(config, "use_fp16", False)
+    scaler = GradScaler() if use_fp16 else None
+    
     # Fine-tuning loop
     model.train()
     
@@ -63,12 +66,23 @@ def fine_tune(config_filepath, **kwargs):
             input_ids = input_ids.to(device)
             labels = labels.to(device)
             
-            outputs = model(input_ids=input_ids, labels=labels)
-            logits = outputs.logits # (N, seq_length, vocab_size)
-            # logits.view(-1, logits.size(-1)): (N*seq_length, vocab_size)
-            # labels.view(-1): (N*seq_length,)
-            loss = loss_fn(logits.view(-1, logits.size(-1)), labels.view(-1))
-            loss.backward()
+            if use_fp16:
+                with autocast():
+                    outputs = model(input_ids=input_ids, labels=labels)
+                    logits = outputs.logits  # (N, seq_length, vocab_size)
+                    loss = loss_fn(logits.view(-1, logits.size(-1)), labels.view(-1))
+
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update() 
+            
+            else:
+                outputs = model(input_ids=input_ids, labels=labels)
+                logits = outputs.logits # (N, seq_length, vocab_size)
+                # logits.view(-1, logits.size(-1)): (N*seq_length, vocab_size)
+                # labels.view(-1): (N*seq_length,)
+                loss = loss_fn(logits.view(-1, logits.size(-1)), labels.view(-1))
+                loss.backward()
 
             optimizer.step()
             lr_scheduler.step()
