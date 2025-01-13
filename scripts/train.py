@@ -7,9 +7,10 @@ from models.lora import add_lora_to_model
 from utils.helpers import count_params
 from models.loss import get_loss_function
 from data.data import create_squad_dataloader
-
+from tqdm import tqdm
 
 def fine_tune(config_filepath, **kwargs):
+    global_min = 10
     # load config
     config = FineTuneConfig(config_path=config_filepath, **kwargs)
 
@@ -43,28 +44,34 @@ def fine_tune(config_filepath, **kwargs):
     model.train()
         
     train_dataloader = create_squad_dataloader(config.train_file_path, tokenizer, config.batch_size, config.max_length)
-    dev_dataloader = create_squad_dataloader(config.dev_file_path, tokenizer, config.batch_size, config.max_length)
+    # dev_dataloader = create_squad_dataloader(config.dev_file_path, tokenizer, config.batch_size, config.max_length)
     
     for epoch in range(config.num_epochs):
-        for step, (input_ids, labels) in enumerate(train_dataloader):
-            print(input_ids.shape)
-            print(labels.shape)
+        progress_bar = tqdm(enumerate(train_dataloader), total=len(train_dataloader), desc=f"Epoch {epoch + 1}")
+        for step, (input_ids, labels) in progress_bar:
             outputs = model(input_ids=input_ids, labels=labels)
             logits = outputs.logits # (N, seq_length, vocab_size)
             # logits.view(-1, logits.size(-1)): (N*seq_length, vocab_size)
             # labels.view(-1): (N*seq_length,)
-        
             loss = loss_fn(logits.view(-1, logits.size(-1)), labels.view(-1))
             loss.backward()
 
             optimizer.step()
             lr_scheduler.step()
             optimizer.zero_grad()
+            
+            progress_bar.set_postfix({"Step": step + 1, "Loss": loss.item()})
 
-            if step % config.save_steps == 0:
-                print(f"Epoch {epoch}, Step {step}, Loss: {loss.item()}")
+            if step % config.log_steps == 0:
+                print(f"Epoch {epoch + 1}, Step {step + 1}, Loss: {loss.item()}")
                 # save checkpoint
                 checkpoint_dir = os.path.join(config.output_dir, f"checkpoint_epoch{epoch}_step{step}")
                 os.makedirs(checkpoint_dir, exist_ok=True)
                 model.save_pretrained(config.output_dir)
                 
+                # save the global min 
+                if loss.item() < global_min:
+                    checkpoint_dir = os.path.join(config.output_dir, f"global_min")
+                    os.makedirs(checkpoint_dir, exist_ok=True)
+                    model.save_pretrained(config.output_dir)
+                    global_min = loss.item()

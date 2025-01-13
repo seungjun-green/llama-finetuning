@@ -7,6 +7,7 @@
     "num_epochs": 3,
     "output_dir": "./fine_tuned_checkpoints",
     "max_seq_length": 512,
+    "log_steps": 1000,
     "train_file_path": "",
     "dev_file_path": ""
 }
