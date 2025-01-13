@@ -19,11 +19,12 @@ def fine_tune(config_filepath, **kwargs):
     config = SquadFineTuneConfig(config_path=config_filepath, **kwargs)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-
     # load tokenizer and model
     tokenizer, model = load_base_model(config.base_model_name)
     
     model.to(device)
+    if use_fp16:
+        model.half()
     
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
