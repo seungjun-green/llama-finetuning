@@ -7,15 +7,15 @@ from models.lora import add_lora_to_model
 from utils.helpers import count_params
 from models.loss import get_loss_function
 from data.squad_data import create_squad_dataloader
+from utils.checkpoint import checkponit
 from tqdm import tqdm
+
+
 
 def fine_tune(config_filepath, **kwargs):
     global_min = 10
     # load config
     config = SquadFineTuneConfig(config_path=config_filepath, **kwargs)
-    
-    
-    
 
     # load tokenizer and model
     tokenizer, model = load_base_model(config.base_model_name)
@@ -29,10 +29,6 @@ def fine_tune(config_filepath, **kwargs):
     # unfreeze lora parameters
     for name, param in model.named_parameters():
         param.requires_grad = "lora" in name
-
-    # initalize optimizer
-    optimizer = Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=config.learning_rate)
-    lr_scheduler = get_scheduler("linear", optimizer=optimizer, num_warmup_steps=warmup_steps, num_training_steps=total_training_steps)
 
     # Print trainable parameters
     total_params, trainable_params = count_params(model)
@@ -52,6 +48,11 @@ def fine_tune(config_filepath, **kwargs):
     total_training_steps = len(train_dataloader) * config.num_epochs
     warmup_steps = int(0.1 * total_training_steps)  
     
+    # initalize optimizer
+    optimizer = Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=config.learning_rate)
+    lr_scheduler = get_scheduler("linear", optimizer=optimizer, num_warmup_steps=warmup_steps, num_training_steps=total_training_steps)
+
+    
     for epoch in range(config.num_epochs):
         progress_bar = tqdm(enumerate(train_dataloader), total=len(train_dataloader), desc=f"Epoch {epoch + 1}")
         for step, (input_ids, labels) in progress_bar:
@@ -68,16 +69,5 @@ def fine_tune(config_filepath, **kwargs):
             
             progress_bar.set_postfix({"Step": step + 1, "Loss": loss.item()})
             
-            if step % config.log_steps == 0:
-                print(f"Epoch {epoch + 1}, Step {step + 1}, Loss: {loss.item()}")
-                # save checkpoint
-                checkpoint_dir = os.path.join(config.output_dir, f"checkpoint_epoch{epoch}_step{step}")
-                os.makedirs(checkpoint_dir, exist_ok=True)
-                model.save_pretrained(config.output_dir)
-                
-                # save the global min 
-                if loss.item() < global_min:
-                    checkpoint_dir = os.path.join(config.output_dir, f"global_min")
-                    os.makedirs(checkpoint_dir, exist_ok=True)
-                    model.save_pretrained(config.output_dir)
-                    global_min = loss.item()
+            if  step % config.log_steps == 0 and step != 0 or step == len(train_dataloader) - 1:
+                global_min = checkponit(model, config.output_dir, epoch, step, loss, global_min)

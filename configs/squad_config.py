@@ -8,7 +8,7 @@ class SquadFineTuneConfig:
         self.lora_alpha = 16
         self.learning_rate = 2e-5
         self.batch_size = 16
-        self.max_seq_length = 256
+        self.max_length = 256
         self.num_epochs = 3
         self.output_dir = "./checkpoints"
         self.log_steps = 1000

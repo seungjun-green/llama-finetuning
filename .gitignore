@@ -3,3 +3,4 @@ __pycache__/
 fine_tuned_checkpoints/
 topics.txt
 keys.py
+*.json 
