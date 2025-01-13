@@ -11,7 +11,7 @@ from utils.checkpoint import checkponit
 from tqdm import tqdm
 import torch
 from torch.cuda.amp import autocast, GradScaler
-
+import torch.nn as nn
 
 def fine_tune(config_filepath, **kwargs):
     global_min = 10
@@ -44,9 +44,8 @@ def fine_tune(config_filepath, **kwargs):
     print(f"Total parameters: {total_params}")
     print(f"Trainable parameters: {trainable_params}")
 
-    loss_fn = get_loss_function(loss_type="cross_entropy")
+    loss_fn = nn.CrossEntropyLoss(ignore_index=tokenizer.pad_token_id)
 
-    
     scaler = GradScaler() if use_fp16 else None
     
     # Fine-tuning loop
