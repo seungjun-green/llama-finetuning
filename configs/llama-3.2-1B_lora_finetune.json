@@ -8,6 +8,7 @@
     "num_epochs": 3,
     "output_dir": "./fine_tuned_checkpoints",
     "log_steps": 1000,
+    "device": "cuda",
     "train_file_path": "",
     "dev_file_path": ""
 }
