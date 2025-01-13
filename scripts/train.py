@@ -14,8 +14,7 @@ def fine_tune(config_filepath, **kwargs):
     # load config
     config = SquadFineTuneConfig(config_path=config_filepath, **kwargs)
     
-    total_training_steps = len(train_dataloader) * config.num_epochs
-    warmup_steps = int(0.1 * total_training_steps)  
+    
     
 
     # load tokenizer and model
@@ -50,6 +49,9 @@ def fine_tune(config_filepath, **kwargs):
     train_dataloader = create_squad_dataloader(config.train_file_path, tokenizer, config.batch_size, config.max_length)
     # dev_dataloader = create_squad_dataloader(config.dev_file_path, tokenizer, config.batch_size, config.max_length)
     
+    total_training_steps = len(train_dataloader) * config.num_epochs
+    warmup_steps = int(0.1 * total_training_steps)  
+    
     for epoch in range(config.num_epochs):
         progress_bar = tqdm(enumerate(train_dataloader), total=len(train_dataloader), desc=f"Epoch {epoch + 1}")
         for step, (input_ids, labels) in progress_bar:
@@ -65,7 +67,7 @@ def fine_tune(config_filepath, **kwargs):
             optimizer.zero_grad()
             
             progress_bar.set_postfix({"Step": step + 1, "Loss": loss.item()})
-
+            
             if step % config.log_steps == 0:
                 print(f"Epoch {epoch + 1}, Step {step + 1}, Loss: {loss.item()}")
                 # save checkpoint
