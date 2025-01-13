@@ -23,6 +23,8 @@ def fine_tune(config_filepath, **kwargs):
     tokenizer, model = load_base_model(config.base_model_name)
     
     model.to(device)
+    
+    use_fp16 = getattr(config, "use_fp16", False)
     if use_fp16:
         model.half()
     
@@ -44,7 +46,7 @@ def fine_tune(config_filepath, **kwargs):
 
     loss_fn = get_loss_function(loss_type="cross_entropy")
 
-    use_fp16 = getattr(config, "use_fp16", False)
+    
     scaler = GradScaler() if use_fp16 else None
     
     # Fine-tuning loop
