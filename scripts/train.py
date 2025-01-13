@@ -9,16 +9,19 @@ from models.loss import get_loss_function
 from data.squad_data import create_squad_dataloader
 from utils.checkpoint import checkponit
 from tqdm import tqdm
-
-
+import torch
 
 def fine_tune(config_filepath, **kwargs):
     global_min = 10
     # load config
     config = SquadFineTuneConfig(config_path=config_filepath, **kwargs)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
     # load tokenizer and model
     tokenizer, model = load_base_model(config.base_model_name)
+    
+    model.to(device)
     
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -56,6 +59,9 @@ def fine_tune(config_filepath, **kwargs):
     for epoch in range(config.num_epochs):
         progress_bar = tqdm(enumerate(train_dataloader), total=len(train_dataloader), desc=f"Epoch {epoch + 1}")
         for step, (input_ids, labels) in progress_bar:
+            input_ids = input_ids.to(device)
+            labels = labels.to(device)
+            
             outputs = model(input_ids=input_ids, labels=labels)
             logits = outputs.logits # (N, seq_length, vocab_size)
             # logits.view(-1, logits.size(-1)): (N*seq_length, vocab_size)
@@ -71,3 +77,5 @@ def fine_tune(config_filepath, **kwargs):
             
             if  step % config.log_steps == 0 and step != 0 or step == len(train_dataloader) - 1:
                 global_min = checkponit(model, config.output_dir, epoch, step, loss, global_min)
+
+
