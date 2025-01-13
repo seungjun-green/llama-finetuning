@@ -1,18 +1,22 @@
 import os
 from torch.optim import Adam
 from transformers import get_scheduler
-from configs.config import FineTuneConfig
+from configs.squad_config import SquadFineTuneConfig
 from models.base_model import load_base_model
 from models.lora import add_lora_to_model
 from utils.helpers import count_params
 from models.loss import get_loss_function
-from data.data import create_squad_dataloader
+from data.squad_data import create_squad_dataloader
 from tqdm import tqdm
 
 def fine_tune(config_filepath, **kwargs):
     global_min = 10
     # load config
-    config = FineTuneConfig(config_path=config_filepath, **kwargs)
+    config = SquadFineTuneConfig(config_path=config_filepath, **kwargs)
+    
+    total_training_steps = len(train_dataloader) * config.num_epochs
+    warmup_steps = int(0.1 * total_training_steps)  
+    
 
     # load tokenizer and model
     tokenizer, model = load_base_model(config.base_model_name)
@@ -29,7 +33,7 @@ def fine_tune(config_filepath, **kwargs):
 
     # initalize optimizer
     optimizer = Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=config.learning_rate)
-    lr_scheduler = get_scheduler("linear", optimizer=optimizer, num_warmup_steps=0, num_training_steps=1000)
+    lr_scheduler = get_scheduler("linear", optimizer=optimizer, num_warmup_steps=warmup_steps, num_training_steps=total_training_steps)
 
     # Print trainable parameters
     total_params, trainable_params = count_params(model)
@@ -42,7 +46,7 @@ def fine_tune(config_filepath, **kwargs):
 
     # Fine-tuning loop
     model.train()
-        
+    
     train_dataloader = create_squad_dataloader(config.train_file_path, tokenizer, config.batch_size, config.max_length)
     # dev_dataloader = create_squad_dataloader(config.dev_file_path, tokenizer, config.batch_size, config.max_length)
     

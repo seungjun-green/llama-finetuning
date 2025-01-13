@@ -2,11 +2,11 @@
     "base_model_name": "meta-llama/Llama-3.2-1B",
     "lora_rank": 16,
     "lora_alpha": 16,
-    "learning_rate": 5e-5,
+    "learning_rate": 2e-5,
     "batch_size": 16,
+    "max_seq_length": 512,
     "num_epochs": 3,
     "output_dir": "./fine_tuned_checkpoints",
-    "max_seq_length": 512,
     "log_steps": 1000,
     "train_file_path": "",
     "dev_file_path": ""
