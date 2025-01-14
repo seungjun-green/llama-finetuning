@@ -1,11 +1,8 @@
-import os
 from torch.optim import Adam
 from transformers import get_scheduler
 from configs.squad_config import SquadFineTuneConfig
-from models.base_model import load_base_model
 from models.lora import add_lora_to_model
 from utils.helpers import count_params
-from models.loss import get_loss_function
 from data.squad_data import create_squad_dataloader
 from utils.checkpoint import checkponit
 from tqdm import tqdm
@@ -13,15 +10,12 @@ import torch
 from torch.cuda.amp import autocast, GradScaler
 import torch.nn as nn
 
-def fine_tune(config_filepath, **kwargs):
+
+def fine_tune(model, tokenizer, config_filepath, **kwargs):
     global_min = 10
-    # load config
+    
     config = SquadFineTuneConfig(config_path=config_filepath, **kwargs)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    # load tokenizer and model
-    tokenizer, model = load_base_model(config.base_model_name)
-    
     model.to(device)
     
     use_fp16 = getattr(config, "use_fp16", False)
@@ -55,13 +49,12 @@ def fine_tune(config_filepath, **kwargs):
     # dev_dataloader = create_squad_dataloader(config.dev_file_path, tokenizer, config.batch_size, config.max_length)
     
     total_training_steps = len(train_dataloader) * config.num_epochs
-    warmup_steps = int(0.1 * total_training_steps)  
+    warmup_steps = int(0.05 * total_training_steps)  
     
     # initalize optimizer
     optimizer = Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=config.learning_rate)
     lr_scheduler = get_scheduler("linear", optimizer=optimizer, num_warmup_steps=warmup_steps, num_training_steps=total_training_steps)
 
-    
     for epoch in range(config.num_epochs):
         progress_bar = tqdm(enumerate(train_dataloader), total=len(train_dataloader), desc=f"Epoch {epoch + 1}")
         for step, (input_ids, labels) in progress_bar:
@@ -94,5 +87,4 @@ def fine_tune(config_filepath, **kwargs):
             
             if  step % config.log_steps == 0 and step != 0 or step == len(train_dataloader) - 1:
                 global_min = checkponit(model, config.output_dir, epoch, step, loss, global_min)
-
-
+            

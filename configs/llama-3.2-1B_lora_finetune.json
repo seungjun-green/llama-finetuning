@@ -10,6 +10,7 @@
     "log_steps": 1000,
     "device": "cuda",
     "use_fp16": true,
+    "warmup_ratio": 0.05,
     "train_file_path": "",
     "dev_file_path": ""
 }

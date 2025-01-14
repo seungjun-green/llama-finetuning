@@ -14,6 +14,7 @@ class SquadFineTuneConfig:
         self.log_steps = 1000
         self.device = "cuda",
         self.use_fp16 = True,
+        self.warmup_ratio = 0.05,
         self.train_file_path = ""
         self.dev_file_path = ""
         
