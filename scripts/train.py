@@ -19,8 +19,6 @@ def fine_tune(model, tokenizer, config_filepath, **kwargs):
     model.to(device)
     
     use_fp16 = getattr(config, "use_fp16", False)
-    if use_fp16:
-        model.half()
     
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -88,3 +86,7 @@ def fine_tune(model, tokenizer, config_filepath, **kwargs):
             if  step % config.log_steps == 0 and step != 0 or step == len(train_dataloader) - 1:
                 global_min = checkponit(model, config.output_dir, epoch, step, loss, global_min)
             
+            
+            
+
+
