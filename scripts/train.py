@@ -9,7 +9,7 @@ from tqdm import tqdm
 import torch
 from torch.cuda.amp import autocast, GradScaler
 import torch.nn as nn
-
+from torch.optim import AdamW
 
 def fine_tune(model, tokenizer, config_filepath, **kwargs):
     global_min = 10
@@ -44,14 +44,24 @@ def fine_tune(model, tokenizer, config_filepath, **kwargs):
     model.train()
     
     train_dataloader = create_squad_dataloader(config.train_file_path, tokenizer, config.batch_size, config.max_length)
-    # dev_dataloader = create_squad_dataloader(config.dev_file_path, tokenizer, config.batch_size, config.max_length)
-    
+        
     total_training_steps = len(train_dataloader) * config.num_epochs
-    warmup_steps = int(0.05 * total_training_steps)  
+    warmup_steps = int(config.warmup_ratio * total_training_steps)  
     
     # initalize optimizer
-    optimizer = Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=config.learning_rate)
-    lr_scheduler = get_scheduler("linear", optimizer=optimizer, num_warmup_steps=warmup_steps, num_training_steps=total_training_steps)
+    optimizer = AdamW(
+        filter(lambda p: p.requires_grad, model.parameters()), 
+        lr=config.learning_rate,
+        betas=(0.9, 0.999),            # Default betas for AdamW
+        weight_decay=0.01              # Recommended weight decay
+    )
+    
+    lr_scheduler = get_scheduler(
+        "linear", 
+        optimizer=optimizer, 
+        num_warmup_steps=warmup_steps, 
+        num_training_steps=total_training_steps
+    )
 
     for epoch in range(config.num_epochs):
         progress_bar = tqdm(enumerate(train_dataloader), total=len(train_dataloader), desc=f"Epoch {epoch + 1}")

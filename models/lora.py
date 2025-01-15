@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-class LoRALinear(nn.Module):
+class CustomLoRALinear(nn.Module):
     def __init__(self, in_dim, out_dim, alpha=16.0, rank=8, dropout=0.0, bias=True):
         super().__init__()
         self.linear = nn.Linear(in_dim, out_dim, bias=bias)
@@ -24,7 +24,7 @@ class LoRALinear(nn.Module):
         lora_out = self.lora_b(self.lora_a(self.dropout(x)))
         return frozen_out + (self.alpha / self.rank) * lora_out
 
-def add_lora_to_model(model, rank=8, alpha=16.0):
+def add_custom_lora_to_model(model, rank=8, alpha=16.0):
     # replace the selected nn.Linear layers (e.g q_proj, v_proj) with LoRA layers.
     def get_parent_module(model, module_name):
         parts = module_name.split(".")
@@ -56,3 +56,7 @@ def add_lora_to_model(model, rank=8, alpha=16.0):
             setattr(parent, child_name, lora_module)
 
     return model
+
+
+
+
