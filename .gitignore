@@ -4,3 +4,5 @@ fine_tuned_checkpoints/
 topics.txt
 keys.py
 *.json 
+save_scripts.py
+output.txt
