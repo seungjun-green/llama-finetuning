@@ -48,6 +48,26 @@ fine_tune(model,
 
 ---
 
+## 📂 Config Structure
+
+{
+    "base_model_name": "meta-llama/Llama-3.2-1B",
+    "lora_rank": 8,
+    "lora_alpha": 16,
+    "learning_rate": 1e-4,
+    "batch_size": 16,
+    "max_seq_length": 512,
+    "num_epochs": 3,
+    "output_dir": "./fine_tuned_checkpoints",
+    "log_steps": 1000,
+    "device": "cuda",
+    "use_fp16": false,
+    "warmup_ratio": 0.5,
+    "train_file_path": "",
+    "dev_file_path": ""
+}
+
+---
 ## 📂 Directory Structure
 
 ```

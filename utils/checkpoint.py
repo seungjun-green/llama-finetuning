@@ -14,13 +14,14 @@ def save_lora_weights(model, save_directory, check_name):
     torch.save(lora_state_dict, os.path.join(save_directory, check_name))
     
     
-def checkponit(model, dir, epoch, step, loss, global_min):
-    print(f"Epoch {epoch + 1}, Step {step + 1}, Loss: {loss.item()}")
-    save_lora_weights(model, dir, f"epoch{epoch}_step{step}_loss{loss.item():.4f}")
+def save_checkponit(model, dir, epoch, step, loss, global_min, block, total):
+    if  step % block == 0 and step != 0 or step == total - 1:
+        print(f"Epoch {epoch + 1}, Step {step + 1}, Loss: {loss.item()}")
+        save_lora_weights(model, dir, f"epoch{epoch}_step{step}_loss{loss.item():.4f}")
 
     # save the global min 
     if loss.item() < global_min:
-        save_lora_weights(model, dir, f"epoch{epoch}_step{step}_loss{loss.item():.4f}")
+        save_lora_weights(model, dir, f"global_min_epoch{epoch}_step{step}_loss{loss.item():.4f}")
         
         global_min = loss.item()
     

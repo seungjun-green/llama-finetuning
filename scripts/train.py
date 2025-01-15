@@ -4,7 +4,7 @@ from configs.squad_config import SquadFineTuneConfig
 from models.lora import add_lora_to_model
 from utils.helpers import count_params
 from data.squad_data import create_squad_dataloader
-from utils.checkpoint import checkponit
+from utils.checkpoint import save_checkponit
 from tqdm import tqdm
 import torch
 from torch.cuda.amp import autocast, GradScaler
@@ -12,7 +12,7 @@ import torch.nn as nn
 from torch.optim import AdamW
 
 def fine_tune(model, tokenizer, config_filepath, **kwargs):
-    global_min = 10
+    global_min = 9
     
     config = SquadFineTuneConfig(config_path=config_filepath, **kwargs)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -93,10 +93,5 @@ def fine_tune(model, tokenizer, config_filepath, **kwargs):
             
             progress_bar.set_postfix({"Step": step + 1, "Loss": loss.item()})
             
-            if  step % config.log_steps == 0 and step != 0 or step == len(train_dataloader) - 1:
-                global_min = checkponit(model, config.output_dir, epoch, step, loss, global_min)
-            
-            
-            
 
-
+            global_min = save_checkponit(model, config.output_dir, epoch, step, loss, global_min, config.log_steps, len(train_dataloader))
