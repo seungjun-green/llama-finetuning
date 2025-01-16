@@ -123,30 +123,9 @@ pip install -r requirements.txt
 
 ---
 
-## 💡 Example Use Case
-
-Fine-tune a Llama model on the SQuAD dataset to create a question-answering system. The fine-tuned model can be used to:
-
-- Answer questions from a given context.
-- Serve as a foundation for building custom QA pipelines.
-
----
-
 ## 🤝 Contributions
 
 Contributions are welcome! Feel free to open an issue or submit a pull request for suggestions, bug fixes, or new features.
-
----
-
-## 📄 License
-
-This project is licensed under the [MIT License](LICENSE).
-
----
-
-## 📬 Contact
-
-For questions or support, please reach out to [seungjun-green](https://github.com/seungjun-green).
 
 ---
 
