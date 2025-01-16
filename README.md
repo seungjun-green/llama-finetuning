@@ -49,7 +49,7 @@ fine_tune(model,
 ---
 
 ## 📂 Config Structure
-
+```bash
 {
     "base_model_name": "meta-llama/Llama-3.2-1B",
     "lora_rank": 8,
@@ -66,6 +66,7 @@ fine_tune(model,
     "train_file_path": "",
     "dev_file_path": ""
 }
+```
 
 ---
 ## 📂 Directory Structure
