@@ -20,6 +20,8 @@ class SQuADDataset(Dataset):
                 self.data.append((context, question, answer))
         self.tokenizer = tokenizer
         self.max_length = max_length
+        
+        self.tokenizer.padding_side = "left"
 
     def __len__(self):
         return len(self.data)
