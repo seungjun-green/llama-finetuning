@@ -1,3 +1,5 @@
 torch
+torchtune
+torchao
 transformers
 tqdm

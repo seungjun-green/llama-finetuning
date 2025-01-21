@@ -65,33 +65,31 @@ def fine_tune(model, tokenizer, config_filepath, **kwargs):
 
     for epoch in range(config.num_epochs):
         progress_bar = tqdm(enumerate(train_dataloader), total=len(train_dataloader), desc=f"Epoch {epoch + 1}")
-        for step, (input_ids, labels) in progress_bar:
-            input_ids = input_ids.to(device)
+        for step, (inputs, labels) in progress_bar:
+            inputs = inputs.to(device)
             labels = labels.to(device)
             
             if use_fp16:
                 with autocast():
-                    outputs = model(input_ids=input_ids, labels=labels)
-                    logits = outputs.logits  # (N, seq_length, vocab_size)
-                    loss = loss_fn(logits.view(-1, logits.size(-1)), labels.view(-1))
+                    outputs = model(inputs)
+                    loss = loss_fn(outputs.view(-1, outputs.size(-1)), labels.view(-1))
 
                 scaler.scale(loss).backward()
                 scaler.step(optimizer)
                 scaler.update() 
             
             else:
-                outputs = model(input_ids=input_ids, labels=labels)
-                logits = outputs.logits # (N, seq_length, vocab_size)
-                # logits.view(-1, logits.size(-1)): (N*seq_length, vocab_size)
-                # labels.view(-1): (N*seq_length,)
-                loss = loss_fn(logits.view(-1, logits.size(-1)), labels.view(-1))
+                outputs = model(inputs)
+                '''
+                outputs.view(-1, logits.size(-1)): (N*seq_length, vocab_size)
+                labels.view(-1): (N*seq_length,)
+                '''
+                loss = loss_fn(outputs.view(-1, outputs.size(-1)), labels.view(-1))
                 loss.backward()
 
-            optimizer.step()
-            lr_scheduler.step()
-            optimizer.zero_grad()
+                optimizer.step()
+                lr_scheduler.step()
+                optimizer.zero_grad()
             
             progress_bar.set_postfix({"Step": step + 1, "Loss": loss.item()})
-            
-
             global_min = save_checkponit(model, config.output_dir, epoch, step, loss, global_min, config.log_steps, len(train_dataloader))
