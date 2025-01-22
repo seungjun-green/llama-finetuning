@@ -24,15 +24,15 @@ def fine_tune(model, tokenizer, config_filepath, **kwargs):
         tokenizer.pad_token = tokenizer.eos_token
 
     # add LoRA layers to the model
-    model = add_lora_to_model(model, rank=config.lora_rank, alpha=config.lora_alpha)
-    model.to(device)
+    lora_model = add_lora_to_model(model, rank=config.lora_rank, alpha=config.lora_alpha)
+    lora_model.to(device)
 
     # unfreeze lora parameters
-    for name, param in model.named_parameters():
+    for name, param in lora_model.named_parameters():
         param.requires_grad = "lora" in name
 
     # Print trainable parameters
-    total_params, trainable_params = count_params(model)
+    total_params, trainable_params = count_params(lora_model)
     print(f"Total parameters: {total_params}")
     print(f"Trainable parameters: {trainable_params}")
 
@@ -41,7 +41,7 @@ def fine_tune(model, tokenizer, config_filepath, **kwargs):
     scaler = GradScaler() if use_fp16 else None
     
     # Fine-tuning loop
-    model.train()
+    lora_model.train()
     
     train_dataloader = create_squad_dataloader(config.train_file_path, tokenizer, config.batch_size, config.max_length)
         
@@ -50,7 +50,7 @@ def fine_tune(model, tokenizer, config_filepath, **kwargs):
     
     # initalize optimizer
     optimizer = AdamW(
-        filter(lambda p: p.requires_grad, model.parameters()), 
+        filter(lambda p: p.requires_grad, lora_model.parameters()), 
         lr=config.learning_rate,
         betas=(0.9, 0.999),            # Default betas for AdamW
         weight_decay=0.01              # Recommended weight decay
@@ -92,4 +92,4 @@ def fine_tune(model, tokenizer, config_filepath, **kwargs):
                 optimizer.zero_grad()
             
             progress_bar.set_postfix({"Step": step + 1, "Loss": loss.item()})
-            global_min = save_checkponit(model, config.output_dir, epoch, step, loss, global_min, config.log_steps, len(train_dataloader))
+            global_min = save_checkponit(lora_model, config.output_dir, epoch, step, loss, global_min, config.log_steps, len(train_dataloader))
