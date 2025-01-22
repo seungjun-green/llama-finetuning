@@ -71,15 +71,16 @@ def fine_tune(model, tokenizer, config_filepath, **kwargs):
             
             if use_fp16:
                 with autocast():
-                    outputs = model(inputs)
+                    outputs = lora_model(inputs)
                     loss = loss_fn(outputs.view(-1, outputs.size(-1)), labels.view(-1))
 
                 scaler.scale(loss).backward()
                 scaler.step(optimizer)
                 scaler.update() 
+                optimizer.zero_grad()
             
             else:
-                outputs = model(inputs)
+                outputs = lora_model(inputs)
                 '''
                 outputs.view(-1, logits.size(-1)): (N*seq_length, vocab_size)
                 labels.view(-1): (N*seq_length,)
