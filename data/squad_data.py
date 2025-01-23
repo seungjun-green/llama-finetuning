@@ -46,7 +46,7 @@ class SQuADDataset(Dataset):
         labels = inputs.clone()
         answer_start_text = f"context: {context}\nquestion: {question}\nanswer:"
         answer_start_token = len(self.tokenizer(answer_start_text)["input_ids"]) - 1
-        labels[:answer_start_token] = -100
+        labels[:answer_start_token] = self.tokenizer.eos_token
     
         return inputs, labels
     
