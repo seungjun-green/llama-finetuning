@@ -1,5 +1,4 @@
-from torch.utils.data import DataLoader, Dataset
-
+import torch
 import json
 from collections import defaultdict
 from torch.utils.data import Dataset, DataLoader
@@ -36,20 +35,25 @@ class SQuADDataset(Dataset):
             labels (torch.Tensor): Encoded target text tensor.
         """
         context, question, answer = self.data[idx]
-        input_text = f"context: {context}\nquestion: {question}\nanswer:{answer}"
+        input_text = f"context: {context}\nquestion: {question}\nanswer:"
         target_text = answer
 
         inputs = self.tokenizer(
             input_text, padding="max_length", truncation=True, max_length=self.max_length, return_tensors="pt"
         ).input_ids.squeeze(0)
         
-        labels = inputs.clone()
+        label_text = f"context: {context}\nquestion: {question}\nanswer:{answer}"
+        
+        labels = self.tokenizer(
+            label_text, padding="max_length", truncation=True, max_length=self.max_length, return_tensors="pt"
+        ).input_ids.squeeze(0)
+
+        labels = labels.clone()
         answer_start_text = f"context: {context}\nquestion: {question}\nanswer:"
-        answer_start_token = len(self.tokenizer(answer_start_text)["input_ids"]) - 1
-        labels[:answer_start_token] = self.tokenizer.eos_token
+        answer_start_token = len(self.tokenizer(answer_start_text)["input_ids"])
+        labels[:answer_start_token] = self.tokenizer.pad_token_id
     
         return inputs, labels
-    
 
 def extract_squad_data_optimized(file_path):
     """
