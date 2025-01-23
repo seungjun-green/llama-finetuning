@@ -11,6 +11,8 @@
     "device": "cuda",
     "use_fp16": false,
     "warmup_ratio": 0.1,
+    "use_gradient_clipping": true,
+    "max_grad_norm": 1,
     "train_file_path": "",
     "dev_file_path": ""
 }

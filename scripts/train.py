@@ -1,10 +1,11 @@
 from torch.optim import Adam
+import torch.nn.utils as nn_utils
 from transformers import get_scheduler
 from configs.squad_config import SquadFineTuneConfig
 from models.lora import add_lora_to_model
 from utils.helpers import count_params
 from data.squad_data import create_squad_dataloader
-from utils.checkpoint import save_checkponit
+from utils.checkpoint import save_checkpoint
 from tqdm import tqdm
 import torch
 from torch.cuda.amp import autocast, GradScaler
@@ -75,6 +76,11 @@ def fine_tune(model, tokenizer, config_filepath, **kwargs):
                     loss = loss_fn(outputs.view(-1, outputs.size(-1)), labels.view(-1))
 
                 scaler.scale(loss).backward()
+                
+                if config.use_gradient_clipping:
+                    scaler.unscale_(optimizer)
+                    nn_utils.clip_grad_norm_(lora_model.parameters(), config.max_grad_norm)
+                    
                 scaler.step(optimizer)
                 scaler.update() 
                 optimizer.zero_grad()
@@ -87,10 +93,13 @@ def fine_tune(model, tokenizer, config_filepath, **kwargs):
                 '''
                 loss = loss_fn(outputs.view(-1, outputs.size(-1)), labels.view(-1))
                 loss.backward()
+                
+                if config.use_gradient_clipping:
+                    nn_utils.clip_grad_norm_(lora_model.parameters(), config.max_grad_norm)
 
                 optimizer.step()
                 lr_scheduler.step()
                 optimizer.zero_grad()
             
             progress_bar.set_postfix({"Step": step + 1, "Loss": loss.item()})
-            global_min = save_checkponit(lora_model, config.output_dir, epoch, step, loss, global_min, config.log_steps, len(train_dataloader))
+            global_min = save_checkpoint(lora_model, config.output_dir, epoch, step, loss, global_min, config.log_steps, len(train_dataloader))

@@ -14,7 +14,7 @@ def save_lora_weights(model, save_directory, check_name):
     torch.save(lora_state_dict, os.path.join(save_directory, check_name))
     
     
-def save_checkponit(model, dir, epoch, step, loss, global_min, block, total):
+def save_checkpoint(model, dir, epoch, step, loss, global_min, block, total):
     if  step % block == 0 and step != 0 or step == total - 1:
         print(f"Epoch {epoch + 1}, Step {step + 1}, Loss: {loss.item()}")
         save_lora_weights(model, dir, f"epoch{epoch}_step{step}_loss{loss.item():.4f}")
