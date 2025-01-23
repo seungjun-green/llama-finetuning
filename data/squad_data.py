@@ -36,16 +36,18 @@ class SQuADDataset(Dataset):
             labels (torch.Tensor): Encoded target text tensor.
         """
         context, question, answer = self.data[idx]
-        input_text = f"context: {context} question: {question}"
+        input_text = f"context: {context}\nquestion: {question}\nanswer:{answer}"
         target_text = answer
 
         inputs = self.tokenizer(
             input_text, padding="max_length", truncation=True, max_length=self.max_length, return_tensors="pt"
         ).input_ids.squeeze(0)
-        labels = self.tokenizer(
-            target_text, padding="max_length", truncation=True, max_length=self.max_length, return_tensors="pt"
-        ).input_ids.squeeze(0)
-
+        
+        labels = inputs.clone()
+        answer_start_text = f"context: {context}\nquestion: {question}\nanswer:"
+        answer_start_token = len(self.tokenizer(answer_start_text)["input_ids"]) - 1
+        labels[:answer_start_token] = -100
+    
         return inputs, labels
     
 
