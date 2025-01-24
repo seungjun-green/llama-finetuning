@@ -20,7 +20,6 @@ def fine_tune(model, tokenizer, config_filepath, **kwargs):
     model.to(device)
     
     use_fp16 = getattr(config, "use_fp16", False)
-    
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
