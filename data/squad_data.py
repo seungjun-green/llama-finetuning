@@ -29,9 +29,9 @@ class SQuADDataset(Dataset):
                 target_tensor_length = len(target_tensor)
                 
                 if input_tensor_length > self.max_length:
-                    input_tensor_length = input_tensor_length[:self.max_length]
+                    input_tensor = input_tensor[:self.max_length]
                 if target_tensor_length > self.max_length:
-                    target_tensor_length = target_tensor_length[:self.max_length]
+                    target_tensor = target_tensor[:self.max_length]
 
                 input_right_pad_nums = max(0, self.max_length - input_tensor_length)
                 target_right_pad_nums = max(0, self.max_length - (input_tensor_length + target_tensor_length))
