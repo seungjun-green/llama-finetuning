@@ -25,10 +25,6 @@ class SQuADDataset(Dataset):
                 # truncate
                 if len(input_tensor) > self.max_length:
                     input_tensor = input_tensor[:self.max_length]
-                if len(target_tensor) > self.max_length:
-                    target_tensor = target_tensor[:self.max_length]
-
-                # Update lengths after truncation
 
                 # Step2: do the padding process
                 # input_tensor: add X number of 128004 to the right, where X = max_seq_length - current length
@@ -41,7 +37,10 @@ class SQuADDataset(Dataset):
 
                 input_tensor += [128004] * input_right_pad_nums  # Pad right
                 target_tensor = [128004] * input_tensor_length + target_tensor + [128004] * target_right_pad_nums
-
+                
+                if len(target_tensor) > self.max_length:
+                    target_tensor = target_tensor[:self.max_length]
+                    
                 self.data.append((torch.LongTensor(input_tensor), torch.LongTensor(target_tensor)))
 
     def __len__(self):
