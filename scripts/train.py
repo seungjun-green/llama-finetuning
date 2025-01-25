@@ -20,8 +20,6 @@ def fine_tune(model, tokenizer, config_filepath, **kwargs):
     model.to(device)
     
     use_fp16 = getattr(config, "use_fp16", False)
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
 
     # add LoRA layers to the model
     lora_model = add_lora_to_model(model, rank=config.lora_rank, alpha=config.lora_alpha)
