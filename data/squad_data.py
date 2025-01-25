@@ -32,7 +32,7 @@ class SQuADDataset(Dataset):
                 target_right_pad_nums = max(0, self.max_length - (input_tensor_length + target_tensor_length))
 
                 input_tensor += [128004] * input_right_pad_nums  # Pad right
-                target_tensor = [128002] * input_tensor_length + target_tensor + [128004] * target_right_pad_nums
+                target_tensor = [128004] * input_tensor_length + target_tensor + [128004] * target_right_pad_nums
 
                 self.data.append((torch.LongTensor(input_tensor), torch.LongTensor(target_tensor)))
 

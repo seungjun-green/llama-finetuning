@@ -34,7 +34,7 @@ def fine_tune(model, tokenizer, config_filepath, **kwargs):
     print(f"Total parameters: {total_params}")
     print(f"Trainable parameters: {trainable_params}")
 
-    loss_fn = nn.CrossEntropyLoss(ignore_index=tokenizer.pad_token_id)
+    loss_fn = nn.CrossEntropyLoss(ignore_index=12804)
 
     scaler = GradScaler() if use_fp16 else None
     
