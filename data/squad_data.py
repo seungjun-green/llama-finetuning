@@ -21,6 +21,14 @@ class SQuADDataset(Dataset):
                 # output_test: remove the 12800 in the start
                 input_tensor = list(tokenizer.encode(input_text)[:-1])  
                 target_tensor = list(tokenizer.encode(target_text)[1:])
+                
+                # truncate
+                if len(input_tensor) > self.max_length:
+                    input_tensor = input_tensor[:self.max_length]
+                if len(target_tensor) > self.max_length:
+                    target_tensor = target_tensor[:self.max_length]
+
+                # Update lengths after truncation
 
                 # Step2: do the padding process
                 # input_tensor: add X number of 128004 to the right, where X = max_seq_length - current length
@@ -28,11 +36,6 @@ class SQuADDataset(Dataset):
                 input_tensor_length = len(input_tensor)
                 target_tensor_length = len(target_tensor)
                 
-                if input_tensor_length > self.max_length:
-                    input_tensor = input_tensor[:self.max_length]
-                if target_tensor_length > self.max_length:
-                    target_tensor = target_tensor[:self.max_length]
-
                 input_right_pad_nums = max(0, self.max_length - input_tensor_length)
                 target_right_pad_nums = max(0, self.max_length - (input_tensor_length + target_tensor_length))
 
