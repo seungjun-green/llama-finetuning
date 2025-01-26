@@ -1,5 +1,4 @@
 from torch.optim import Adam
-import torch.nn.utils as nn_utils
 from transformers import get_scheduler
 from configs.squad_config import SquadFineTuneConfig
 from models.lora import add_lora_to_model
@@ -20,26 +19,29 @@ def fine_tune(model, tokenizer, config_filepath, **kwargs):
     model.to(device)
     
     use_fp16 = getattr(config, "use_fp16", False)
+    
+    if tokenizer.pad_token is None:
+        tokenizer.add_special_tokens({'pad_token': '<|finetune_right_pad_id|>'})
 
     # add LoRA layers to the model
-    lora_model = add_lora_to_model(model, rank=config.lora_rank, alpha=config.lora_alpha)
-    lora_model.to(device)
+    model = add_lora_to_model(model, rank=config.lora_rank, alpha=config.lora_alpha)
+    model.to(device)
 
     # unfreeze lora parameters
-    for name, param in lora_model.named_parameters():
+    for name, param in model.named_parameters():
         param.requires_grad = "lora" in name
 
     # Print trainable parameters
-    total_params, trainable_params = count_params(lora_model)
+    total_params, trainable_params = count_params(model)
     print(f"Total parameters: {total_params}")
     print(f"Trainable parameters: {trainable_params}")
 
-    loss_fn = nn.CrossEntropyLoss(ignore_index=12804)
+    loss_fn = nn.CrossEntropyLoss(ignore_index=tokenizer.pad_token_id)
 
     scaler = GradScaler() if use_fp16 else None
     
     # Fine-tuning loop
-    lora_model.train()
+    model.train()
     
     train_dataloader = create_squad_dataloader(config.train_file_path, tokenizer, config.batch_size, config.max_length)
         
@@ -48,10 +50,10 @@ def fine_tune(model, tokenizer, config_filepath, **kwargs):
     
     # initalize optimizer
     optimizer = AdamW(
-        filter(lambda p: p.requires_grad, lora_model.parameters()), 
+        filter(lambda p: p.requires_grad, model.parameters()), 
         lr=config.learning_rate,
-        betas=(0.9, 0.999),            # Default betas for AdamW
-        weight_decay=0.01              # Recommended weight decay
+        betas=(0.9, 0.999),        
+        weight_decay=0.01
     )
     
     lr_scheduler = get_scheduler(
@@ -63,40 +65,33 @@ def fine_tune(model, tokenizer, config_filepath, **kwargs):
 
     for epoch in range(config.num_epochs):
         progress_bar = tqdm(enumerate(train_dataloader), total=len(train_dataloader), desc=f"Epoch {epoch + 1}")
-        for step, (inputs, labels) in progress_bar:
-            inputs = inputs.to(device)
+        for step, (input_ids, labels) in progress_bar:
+            input_ids = input_ids.to(device)
             labels = labels.to(device)
             
             if use_fp16:
                 with autocast():
-                    outputs = lora_model(inputs)
-                    loss = loss_fn(outputs.view(-1, outputs.size(-1)), labels.view(-1))
+                    outputs = model(input_ids=input_ids, labels=labels)
+                    logits = outputs.logits  # (N, seq_length, vocab_size)
+                    loss = loss_fn(logits.view(-1, logits.size(-1)), labels.view(-1))
 
                 scaler.scale(loss).backward()
-                
-                if config.use_gradient_clipping:
-                    scaler.unscale_(optimizer)
-                    nn_utils.clip_grad_norm_(lora_model.parameters(), config.max_grad_norm)
-                    
                 scaler.step(optimizer)
                 scaler.update() 
-                optimizer.zero_grad()
             
             else:
-                outputs = lora_model(inputs)
-                '''
-                outputs.view(-1, logits.size(-1)): (N*seq_length, vocab_size)
-                labels.view(-1): (N*seq_length,)
-                '''
-                loss = loss_fn(outputs.view(-1, outputs.size(-1)), labels.view(-1))
+                outputs = model(input_ids=input_ids, labels=labels)
+                logits = outputs.logits # (N, seq_length, vocab_size)
+                # logits.view(-1, logits.size(-1)): (N*seq_length, vocab_size)
+                # labels.view(-1): (N*seq_length,)
+                loss = loss_fn(logits.view(-1, logits.size(-1)), labels.view(-1))
                 loss.backward()
-                
-                if config.use_gradient_clipping:
-                    nn_utils.clip_grad_norm_(lora_model.parameters(), config.max_grad_norm)
 
-                optimizer.step()
-                lr_scheduler.step()
-                optimizer.zero_grad()
+            optimizer.step()
+            lr_scheduler.step()
+            optimizer.zero_grad()
             
             progress_bar.set_postfix({"Step": step + 1, "Loss": loss.item()})
-            global_min = save_checkpoint(lora_model, config.output_dir, epoch, step, loss, global_min, config.log_steps, len(train_dataloader))
+            
+
+            global_min = save_checkpoint(model, config.output_dir, epoch, step, loss, global_min, config.log_steps, len(train_dataloader))

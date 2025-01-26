@@ -1,53 +1,53 @@
 from torch.utils.data import DataLoader, Dataset
-import torch
 import json
 from collections import defaultdict
 from torch.utils.data import Dataset, DataLoader
 
 class SQuADDataset(Dataset):
     def __init__(self, context_qa_map, tokenizer, max_length):
+        """
+        Custom Dataset for SQuAD-like data.
+
+        Args:
+            context_qa_map (dict): Dictionary mapping context to a list of (question, answer) pairs.
+            tokenizer (transformers.PreTrainedTokenizer): Tokenizer to encode input and target texts.
+            max_length (int): Maximum token length for inputs and labels.
+        """
         self.data = []
-        self.tokenizer = tokenizer
-        self.max_length = max_length
-        
         for context, qa_pairs in context_qa_map.items():
             for question, answer in qa_pairs:
-                input_text = f"context: {context}\nquestion: {question}\nanswer:"
-                target_text = answer
-
-                # Tokenize and apply truncation here
-                # first tokenize both input_text and target_text
-                # input_text: remove the 128001 in the end
-                # output_test: remove the 12800 in the start
-                input_tensor = list(tokenizer.encode(input_text)[:-1])  
-                target_tensor = list(tokenizer.encode(target_text)[1:])
-                
-                # truncate
-                if len(input_tensor) > self.max_length:
-                    
-
-                # Step2: do the padding process
-                # input_tensor: add X number of 128004 to the right, where X = max_seq_length - current length
-                # target_tensor: add 'origianl number of input_tensor' number of 128002 in the left, and 128004 to the right
-                input_tensor_length = len(input_tensor)
-                target_tensor_length = len(target_tensor)
-                
-                input_right_pad_nums = max(0, self.max_length - input_tensor_length)
-                target_right_pad_nums = max(0, self.max_length - (input_tensor_length + target_tensor_length))
-
-                input_tensor += [128004] * input_right_pad_nums  # Pad right
-                target_tensor = [128004] * input_tensor_length + target_tensor + [128004] * target_right_pad_nums
-                
-                input_tensor = input_tensor[:self.max_length]
-                target_tensor = target_tensor[:self.max_length]
-                    
-                self.data.append((torch.LongTensor(input_tensor), torch.LongTensor(target_tensor)))
+                self.data.append((context, question, answer))
+        self.tokenizer = tokenizer
+        self.max_length = max_length
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
-        return self.data[idx] 
+        """
+        Get a single data item as input and label tensors.
+
+        Args:
+            idx (int): Index of the data item.
+
+        Returns:
+            inputs (torch.Tensor): Encoded input text tensor.
+            labels (torch.Tensor): Encoded target text tensor.
+        """
+        context, question, answer = self.data[idx]
+        input_text = f"context: {context}\nquestion: {question}\nanswer:"
+        target_text = f"context: {context}\nquestion: {question}\nanswer: {answer}"
+
+        inputs = self.tokenizer(
+            input_text, padding="max_length", truncation=True, max_length=self.max_length, return_tensors="pt"
+        ).input_ids.squeeze(0)
+        
+        labels = self.tokenizer(
+            target_text, padding="max_length", truncation=True, max_length=self.max_length, return_tensors="pt"
+        ).input_ids.squeeze(0)
+        
+    
+        return inputs, labels
     
 
 def extract_squad_data_optimized(file_path):
