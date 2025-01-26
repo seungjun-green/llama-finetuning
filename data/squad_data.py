@@ -2,7 +2,7 @@ from torch.utils.data import DataLoader, Dataset
 import json
 from collections import defaultdict
 from torch.utils.data import Dataset, DataLoader
-
+import torch
 class SQuADDataset(Dataset):
     def __init__(self, context_qa_map, tokenizer, max_length):
         """
@@ -38,16 +38,30 @@ class SQuADDataset(Dataset):
         input_text = f"context: {context}\nquestion: {question}\nanswer:"
         target_text = f"context: {context}\nquestion: {question}\nanswer: {answer}"
 
-        inputs = self.tokenizer(
-            input_text, padding="max_length", truncation=True, max_length=self.max_length, return_tensors="pt"
-        ).input_ids.squeeze(0)
+        input_encoding = self.tokenizer(
+            input_text,
+            padding="max_length",
+            truncation=True,
+            max_length=self.max_length,
+            return_tensors="pt"
+        )
+        input_ids = input_encoding.input_ids.squeeze(0)
+        attention_mask = input_encoding.attention_mask.squeeze(0)
+
+        # Tokenize target
+        target_encoding = self.tokenizer(
+            target_text,
+            padding="max_length",
+            truncation=True,
+            max_length=self.max_length,
+            return_tensors="pt"
+        )
+        labels = target_encoding.input_ids.squeeze(0)
+
+        prompt_length = torch.sum(attention_mask).item()
+        labels[:prompt_length] = 128004
         
-        labels = self.tokenizer(
-            target_text, padding="max_length", truncation=True, max_length=self.max_length, return_tensors="pt"
-        ).input_ids.squeeze(0)
-        
-    
-        return inputs, labels
+        return input_ids, labels
     
 
 def extract_squad_data_optimized(file_path):
