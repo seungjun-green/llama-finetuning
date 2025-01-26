@@ -36,7 +36,7 @@ class SQuADDataset(Dataset):
         """
         context, question, answer = self.data[idx]
         input_text = f"context: {context}\nquestion: {question}\nanswer:"
-        target_text = f"context: {context}\nquestion: {question}\nanswer: {answer}"
+        target_text = f"context: {context}\nquestion: {question}\nanswer: {answer} <|end_of_text|>"
 
         input_encoding = self.tokenizer(
             input_text,
@@ -59,10 +59,13 @@ class SQuADDataset(Dataset):
         labels = target_encoding.input_ids.squeeze(0)
 
         prompt_length = torch.sum(attention_mask).item()
+
         labels[:prompt_length] = 128002
+
         
+
         return input_ids, labels
-    
+
 
 def extract_squad_data_optimized(file_path):
     """
@@ -76,7 +79,7 @@ def extract_squad_data_optimized(file_path):
     """
     with open(file_path, 'r') as file:
         squad_data = json.load(file)
-    
+
     context_qa_map = defaultdict(list)
 
     for entry in squad_data['data']:
@@ -86,7 +89,7 @@ def extract_squad_data_optimized(file_path):
                 question = qa['question']
                 answer = qa['answers'][0]['text'] if qa['answers'] else ""
                 context_qa_map[context].append((question, answer))
-    
+
     return context_qa_map
 
 def create_squad_dataloader(file_path, tokenizer, batch_size, max_length):
