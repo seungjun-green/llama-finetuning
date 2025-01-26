@@ -12,7 +12,7 @@ import torch.nn as nn
 from torch.optim import AdamW
 
 def fine_tune(model, tokenizer, config_filepath, **kwargs):
-    global_min = 9
+    global_min = 8
     
     config = SquadFineTuneConfig(config_path=config_filepath, **kwargs)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -36,7 +36,7 @@ def fine_tune(model, tokenizer, config_filepath, **kwargs):
     print(f"Total parameters: {total_params}")
     print(f"Trainable parameters: {trainable_params}")
 
-    loss_fn = nn.CrossEntropyLoss()
+    loss_fn = nn.CrossEntropyLoss(ignore_index=tokenizer.pad_token_id)
 
     scaler = GradScaler() if use_fp16 else None
     

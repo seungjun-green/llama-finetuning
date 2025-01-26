@@ -59,11 +59,10 @@ class SQuADDataset(Dataset):
         labels = target_encoding.input_ids.squeeze(0)
 
         prompt_length = torch.sum(attention_mask).item()
-        labels[:prompt_length] = -100
+        labels[:prompt_length] = 128004
         
         return input_ids, labels
     
-
 def extract_squad_data_optimized(file_path):
     """
     Extract data from SQuAD-like JSON file and structure it by context.
