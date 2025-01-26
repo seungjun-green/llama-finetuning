@@ -59,7 +59,7 @@ class SQuADDataset(Dataset):
         labels = target_encoding.input_ids.squeeze(0)
 
         prompt_length = torch.sum(attention_mask).item()
-        labels[:prompt_length] = 128004
+        labels[:prompt_length] = 128002
         
         return input_ids, labels
     
