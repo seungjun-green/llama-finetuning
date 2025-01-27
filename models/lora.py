@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+from models.base_model import load_base_model
 
 class LoRALinear(nn.Module):
     def __init__(self, in_dim, out_dim, alpha=16.0, rank=8, dropout=0.0, bias=True):
@@ -60,3 +61,42 @@ def add_lora_to_model(model, rank=8, alpha=16.0):
 
 
 
+def load_lora_applied_model(model_name: str, lora_checkpoint_path: str, rank=8, alpha=16.0):
+    """
+    1. Load base model & tokenizer.
+    2. Inject LoRALinear layers into q_proj & v_proj.
+    3. Load LoRA weights into those layers.
+    4. Return (tokenizer, lora_model).
+    """
+    # 1. Load the base
+    tokenizer, base_model = load_base_model(model_name)
+
+    # 2. Inject LoRA layers
+    lora_model = add_lora_to_model(base_model, rank=rank, alpha=alpha)
+
+    # 3. Load LoRA checkpoint
+    lora_state_dict = torch.load(lora_checkpoint_path, map_location="cpu")
+
+    # 4. Copy parameters
+    with torch.no_grad():
+        for key, param in lora_state_dict.items():
+            splitted = key.split(".")
+            # everything except the last two is the module path
+            module_path = splitted[:-2]
+            # second-last is "lora_a" or "lora_b"
+            submodule_name = splitted[-2]
+            # last is "weight" (most likely)
+            weight_name = splitted[-1]
+
+            module = lora_model
+            for attr in module_path:
+                module = getattr(module, attr)
+
+            submodule = getattr(module, submodule_name)
+            getattr(submodule, weight_name).copy_(param)
+
+    for name, module in lora_model.named_modules():
+        if isinstance(module, LoRALinear):
+            print(f"[INFO] LoRA module injected at: {name}")
+
+    return tokenizer, lora_model
