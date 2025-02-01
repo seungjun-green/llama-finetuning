@@ -1,0 +1,152 @@
+import torch
+import torch.nn as nn
+from torch.optim import AdamW
+from torch.cuda.amp import autocast, GradScaler
+from transformers import get_scheduler
+from tqdm import tqdm
+from models.lora import add_lora_to_model
+from utils.helpers import count_params
+from data.json_data import create_dataloaders
+from utils.checkpoint import save_checkpoint
+from configs.squad_config import SquadFineTuneConfig
+from models.base_model import load_base_model
+import os
+from models.lora import LoRALinear
+import torch
+
+
+
+class Finetuner:
+    def __init__(self, config_filepath, **kwargs):
+        self.config = SquadFineTuneConfig(config_path=config_filepath, **kwargs)
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model_name = self.config.base_model_name
+        
+        # load tokenizer and model
+        self.tokenizer, self.model = load_base_model(self.model_name)
+        self.model = self.model.to(self.device)
+        
+        # fp16 setting
+        self.use_fp16 = getattr(self.config, "use_fp16", False)
+        self.scaler = GradScaler() if self.use_fp16 else None
+        
+        # set the pad token
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.add_special_tokens({'pad_token': '<|finetune_right_pad_id|>'})
+        
+        # add LoRA layers to the model
+        self.model = add_lora_to_model(self.model, rank=self.config.lora_rank, alpha=self.config.lora_alpha)
+        self.model.to(self.device)
+        
+        for name, param in self.model.named_parameters():
+            param.requires_grad = "lora" in name
+
+        # Print trainable parameters
+        total_params, trainable_params = count_params(self.model)
+        print(f"Total parameters: {total_params}")
+        print(f"Trainable parameters: {trainable_params}")
+        
+        # Loss function
+        self.loss_fn = nn.CrossEntropyLoss()
+        
+        # Create train dataLoader and val dataloader
+        self.train_dataloader, self.val_loader = create_dataloaders(
+            self.config.train_file_path, self.tokenizer, self.config.batch_size, self.config.max_length
+        )
+        
+        # Optimizer and scheduler setup
+        self.optimizer = AdamW(
+            filter(lambda p: p.requires_grad, self.model.parameters()),
+            lr=self.config.learning_rate,
+            betas=(0.9, 0.999),
+            weight_decay=0.01
+        )
+        
+        total_training_steps = len(self.train_dataloader) * self.config.num_epochs
+        warmup_steps = int(self.config.warmup_ratio * total_training_steps)
+        self.lr_scheduler = get_scheduler(
+            "linear",
+            optimizer=self.optimizer,
+            num_warmup_steps=warmup_steps,
+            num_training_steps=total_training_steps
+        )
+        
+        self.train_losses = []
+        self.val_losses = []
+        
+    def save_lora_weights(model, save_directory, check_name):
+        os.makedirs(save_directory, exist_ok=True)
+        lora_state_dict = {}
+
+        for name, module in model.named_modules():
+            if isinstance(module, LoRALinear):
+                lora_state_dict[f"{name}.lora_a.weight"] = module.lora_a.weight.detach().cpu()
+                lora_state_dict[f"{name}.lora_b.weight"] = module.lora_b.weight.detach().cpu()
+
+        torch.save(lora_state_dict, os.path.join(save_directory, check_name))
+        
+    def get_val_loss(self):
+        self.model.eval()
+        total_val_loss = 0.0
+        num_batches = 0
+        
+        with torch.no_grad():
+            for input_ids, labels in self.val_loader:
+                input_ids = input_ids.to(self.device)
+                labels = labels.to(self.device)
+                
+                if self.use_fp16:
+                    with autocast():
+                        outputs = self.model(input_ids=input_ids, labels=labels)
+                else:
+                    outputs = self.model(input_ids=input_ids, labels=labels)
+                    
+                logits = outputs.logits
+                loss = self.loss_fn(logits.view(-1, logits.size(-1)), labels.view(-1))
+                total_val_loss += loss.item()
+                num_batches += 1
+            
+        avg_val_loss = total_val_loss / num_batches if num_batches > 0 else 0
+        self.model.train() 
+        return avg_val_loss
+        
+    def train(self):
+        self.model.train()
+        for epoch in range(self.config.num_epochs):
+            progress_bar = tqdm(enumerate(self.train_dataloader), total=len(self.train_dataloader), desc=f"Epoch {epoch + 1}")
+            for step, (input_ids, labels) in progress_bar:
+                input_ids = input_ids.to(self.device)
+                labels = labels.to(self.device)
+                
+                self.optimizer.zero_grad()
+                
+                if self.use_fp16:
+                    with autocast():
+                        outputs = self.model(input_ids=input_ids, labels=labels)
+                        logits = outputs.logits
+                        loss = self.loss_fn(logits.view(-1, logits.size(-1)), labels.view(-1))
+                    self.scaler.scale(loss).backward()
+                    self.scaler.step(self.optimizer)
+                    self.scaler.update()
+                else:
+                    outputs = self.model(input_ids=input_ids, labels=labels)
+                    logits = outputs.logits
+                    loss = self.loss_fn(logits.view(-1, logits.size(-1)), labels.view(-1))
+                    loss.backward()
+                    self.optimizer.step()
+                
+                self.lr_scheduler.step()
+                self.train_losses.append(loss)
+                
+                progress_bar.set_postfix({"Step": step + 1, "Loss": loss.item()})
+                
+                # Save checkpoint based on some logging steps and improvement criteria
+                if  step % self.log == 0 and step != 0 or step == self.total - 1:
+                    # get the validation loss
+                    val_loss = self.get_val_loss()
+                    self.val_losses.append(val_loss)
+                    print(f"Epoch {epoch + 1}, Step {step + 1}, Loss: {round(val_loss.item(), 4)}")
+                    # save the current checkpoint
+                    self.save_lora_weights(self.model,
+                                        self.config.output_dir,
+                                        f"epoch{epoch}_step{step}_loss{val_loss.item():.4f}")
