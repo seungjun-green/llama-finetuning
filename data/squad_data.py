@@ -5,14 +5,6 @@ from torch.utils.data import Dataset, DataLoader
 import torch
 class SQuADDataset(Dataset):
     def __init__(self, context_qa_map, tokenizer, max_length):
-        """
-        Custom Dataset for SQuAD-like data.
-
-        Args:
-            context_qa_map (dict): Dictionary mapping context to a list of (question, answer) pairs.
-            tokenizer (transformers.PreTrainedTokenizer): Tokenizer to encode input and target texts.
-            max_length (int): Maximum token length for inputs and labels.
-        """
         self.data = []
         for context, qa_pairs in context_qa_map.items():
             for question, answer in qa_pairs:
@@ -59,7 +51,7 @@ class SQuADDataset(Dataset):
         labels = target_encoding.input_ids.squeeze(0)
 
         prompt_length = torch.sum(attention_mask).item()
-        labels[:prompt_length] = 128004
+        labels[:prompt_length] = -100
         
         return input_ids, labels
     
