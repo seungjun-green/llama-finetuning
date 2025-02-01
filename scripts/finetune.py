@@ -7,7 +7,6 @@ from tqdm import tqdm
 from models.lora import add_lora_to_model
 from utils.helpers import count_params
 from data.json_data import create_dataloaders
-from utils.checkpoint import save_checkpoint
 from configs.squad_config import SquadFineTuneConfig
 from models.base_model import load_base_model
 import os
@@ -49,7 +48,11 @@ class Finetuner:
         
         # Create train dataLoader and val dataloader
         self.train_dataloader, self.val_loader = create_dataloaders(
-            self.config.train_file_path, self.tokenizer, self.config.batch_size, self.config.max_length
+            self.config.train_file_path, 
+            self.tokenizer, 
+            self.config.batch_size, 
+            self.config.max_length,
+            self.config.train_ratio
         )
         
         # Optimizer and scheduler setup
@@ -69,10 +72,13 @@ class Finetuner:
             num_training_steps=total_training_steps
         )
         
+        
+        self.log = self.config.log_steps
+        
         self.train_losses = []
         self.val_losses = []
         
-    def save_lora_weights(model, save_directory, check_name):
+    def save_lora_weights(self, model, save_directory, check_name):
         os.makedirs(save_directory, exist_ok=True)
         lora_state_dict = {}
 
@@ -139,12 +145,12 @@ class Finetuner:
                 progress_bar.set_postfix({"Step": step + 1, "Loss": loss.item()})
                 
                 # Save checkpoint based on some logging steps and improvement criteria
-                if  step % self.log == 0 and step != 0 or step == self.total - 1:
+                if  step % self.log == 0 and step != 0 or step == len(self.train_dataloader) - 1:
                     # get the validation loss
                     val_loss = self.get_val_loss()
                     self.val_losses.append(val_loss)
-                    print(f"Epoch {epoch + 1}, Step {step + 1}, Loss: {round(val_loss.item(), 4)}")
+                    tqdm.write(f"Epoch {epoch + 1}, Step {step + 1}, Loss: {round(val_loss, 4)}")
                     # save the current checkpoint
                     self.save_lora_weights(self.model,
                                         self.config.output_dir,
-                                        f"epoch{epoch}_step{step}_loss{val_loss.item():.4f}")
+                                        f"epoch{epoch}_step{step}_loss{round(val_loss, 4)}")

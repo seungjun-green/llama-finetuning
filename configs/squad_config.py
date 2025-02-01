@@ -17,6 +17,7 @@ class SquadFineTuneConfig:
         self.warmup_ratio = 0.05,
         self.use_gradient_clipping = True,
         self.max_grad_norm = 1,
+        self.train_ratio = 0.95
         self.train_file_path = ""
         self.dev_file_path = ""
         
