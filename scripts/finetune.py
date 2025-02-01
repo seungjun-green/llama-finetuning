@@ -14,8 +14,6 @@ import os
 from models.lora import LoRALinear
 import torch
 
-
-
 class Finetuner:
     def __init__(self, config_filepath, **kwargs):
         self.config = SquadFineTuneConfig(config_path=config_filepath, **kwargs)
