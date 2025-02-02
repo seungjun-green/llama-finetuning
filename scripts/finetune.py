@@ -19,6 +19,11 @@ class Finetuner:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model_name = self.config.base_model_name
         
+        # early stopping
+        self.best_val_loss = float('inf') 
+        self.early_stopping_patience = self.config.patience
+        self.no_improvement_count = 0  
+        
         # load tokenizer and model
         self.tokenizer, self.model = load_base_model(self.model_name)
         self.model = self.model.to(self.device)
@@ -44,7 +49,7 @@ class Finetuner:
         print(f"Trainable parameters: {trainable_params}")
         
         # Loss function
-        self.loss_fn = nn.CrossEntropyLoss()
+        self.loss_fn = nn.CrossEntropyLoss(ignore_index=self.tokenizer.pad_token_id)
         
         # Create train dataLoader and val dataloader
         self.train_dataloader, self.val_loader = create_dataloaders(
@@ -150,7 +155,19 @@ class Finetuner:
                     val_loss = self.get_val_loss()
                     self.val_losses.append(val_loss)
                     tqdm.write(f"Epoch {epoch + 1}, Step {step + 1}, Loss: {round(val_loss, 4)}")
-                    # save the current checkpoint
-                    self.save_lora_weights(self.model,
+                    
+                    
+                    if val_loss < self.best_val_loss:
+                        self.best_val_loss = val_loss
+                        self.no_improvement_count = 0
+                        # save the current checkpoint
+                        self.save_lora_weights(self.model,
                                         self.config.output_dir,
                                         f"epoch{epoch}_step{step}_loss{round(val_loss, 4)}")
+                    else:
+                        self.no_improvement_count += 1
+                        
+                        if self.no_improvement_count >= self.early_stopping_patience:
+                            tqdm.write(f"Early stopping triggered after {self.early_stopping_patience} consecutive logs without improvement.")
+                            return
+                            

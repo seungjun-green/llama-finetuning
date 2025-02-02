@@ -7,13 +7,14 @@
     "max_seq_length": 512,
     "num_epochs": 3,
     "output_dir": "./fine_tuned_checkpoints",
-    "log_steps": 1000,
+    "log_steps": 500,
     "device": "cuda",
     "use_fp16": false,
     "warmup_ratio": 0.1,
     "use_gradient_clipping": true,
     "max_grad_norm": 1,
     "train_ratio": 0.95,
+    "patience": 5,
     "train_file_path": "",
     "dev_file_path": ""
 }
