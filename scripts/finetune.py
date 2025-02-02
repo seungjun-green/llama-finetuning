@@ -7,7 +7,7 @@ from tqdm import tqdm
 from models.lora import add_lora_to_model
 from utils.helpers import count_params
 from data.json_data import create_dataloaders
-from configs.squad_config import SquadFineTuneConfig
+from configs.finetune_config import FineTuneConfig
 from models.base_model import load_base_model
 import os
 from models.lora import LoRALinear
@@ -15,7 +15,7 @@ import torch
 
 class Finetuner:
     def __init__(self, config_filepath, **kwargs):
-        self.config = SquadFineTuneConfig(config_path=config_filepath, **kwargs)
+        self.config = FineTuneConfig(config_path=config_filepath, **kwargs)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model_name = self.config.base_model_name
         

@@ -15,7 +15,7 @@ class JSON_Dataset(Dataset):
         item = self.data[idx]
         input_text = item['input']
         label_text = item['label']
-        target_text = f"{input_text} {label_text} <|end_of_text|>" # Modified target text
+        target_text = f"{input_text} {label_text} <|end_of_text|>"
 
         input_encoding = self.tokenizer(
             input_text,

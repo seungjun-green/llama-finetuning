@@ -1,6 +1,6 @@
 import json
 
-class SquadFineTuneConfig:
+class FineTuneConfig:
     def __init__(self, config_path=None, **kwargs):
         # initialize the configuration. Load from a JSON file if provided, and override defaults with kwargs.
         self.base_model_name = "meta-llama/Llama-3.2-1B"
