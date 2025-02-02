@@ -38,7 +38,7 @@ class JSON_Dataset(Dataset):
 
 
         prompt_length = torch.sum(attention_mask).item()
-        labels[:prompt_length] = -100
+        labels[:prompt_length] = 128004
 
         return input_ids, labels
 
