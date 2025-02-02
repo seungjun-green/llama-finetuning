@@ -59,7 +59,7 @@ def add_lora_to_model(model, rank=8, alpha=16.0):
     return model
 
 
-def load_lora_applied_model(model_name: str, lora_checkpoint_path: str, rank=8, alpha=16.0):
+def load_lora_applied_model(model_name, lora_checkpoint_path, rank=8, alpha=16.0):
     """
     1. Load base model & tokenizer.
     2. Inject LoRALinear layers into q_proj & v_proj.

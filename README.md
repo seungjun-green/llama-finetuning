@@ -57,6 +57,13 @@ trainer = Finetuner(config_file_path, train_file_path=train_file_path, dev_file_
 trainer.train()
 ```
 
+
+### Example Usage
+[Fine tuning Llama-3.2-1B model on SQaUD](https://github.com/seungjun-green/llama-finetuning/blob/main/notebooks/Llama_funetuning_SQuAD.ipynb)
+
+You can check out the fine-tuned model [here](https://huggingface.co/Seungjun/Llama-3.2-1B-SQuAD)
+
+
 ---
 ## Directory Structure
 
