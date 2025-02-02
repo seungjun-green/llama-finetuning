@@ -6,3 +6,4 @@ keys.py
 *.json 
 save_script.py
 output.txt
+personal*.json
