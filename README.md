@@ -34,35 +34,31 @@ This repository provides a streamlined solution for fine-tuning Llama models on 
 
 ---
 
-## 📋 How to Use This Repository
+## How to Use This Repository
 
 ### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/seungjun-green/llama-finetuning.git
-cd llama-finetuning
 ```
 
 ### 2. Import Required Modules
 
 ```python
 import sys
-sys.path.append("/content/llama-finetuning")
+sys.path.append("/path/to/llama-finetuning")
 from scripts.finetune import fine_tune
 ```
 
 ### 3. Fine-Tune the Model
 
 ```python
-trainer = Finetuner('/content/llama-finetuning/configs/llama-3.2-1B_lora_finetune.json',
-                    train_file_path="/content/squad_train.json",
-                    dev_file_path="/content/squad_dev.json")
-
+trainer = Finetuner(config_file_path, train_file_path=train_file_path, dev_file_path=dev_file_path)
 trainer.train()
 ```
 
 ---
-## 📂 Directory Structure
+## Directory Structure
 
 ```
 llama-finetuning/
