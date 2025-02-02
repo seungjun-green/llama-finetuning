@@ -12,3 +12,10 @@ def save_lora_weights(model, save_directory, check_name):
             lora_state_dict[f"{name}.lora_b.weight"] = module.lora_b.weight.detach().cpu()
 
     torch.save(lora_state_dict, os.path.join(save_directory, check_name))
+    
+
+def save_checkpoint(model, dir, epoch, step, loss, global_min, block, total):
+    ''' every log step save current lora weights
+    '''
+    print(f"Epoch {epoch + 1}, Step {step + 1}, Loss: {loss.item()}")
+    save_lora_weights(model, dir, f"epoch{epoch}_step{step}_loss{loss.item():.4f}")

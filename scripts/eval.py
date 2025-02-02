@@ -4,6 +4,8 @@ from data.squad_data import create_squad_dataloader
 from models.lora import load_lora_applied_model
 from tqdm import tqdm  
 
+
+# this is for the squad dataste
 def eval_loss(model_name, checkpoint_path, dev_file_path, batch_size, max_length, use_fp16=False):
     tokenizer, model = load_lora_applied_model(model_name, checkpoint_path, rank=8, alpha=16.0)
     tokenizer.add_special_tokens({'pad_token': '<|finetune_right_pad_id|>'})
