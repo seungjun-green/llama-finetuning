@@ -8,3 +8,4 @@ output.txt
 test.ipynb
 train-v1.1.json
 dev-v1.1.json
+personal*.json
