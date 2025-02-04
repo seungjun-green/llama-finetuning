@@ -115,7 +115,7 @@ class Finetuner:
                 total_val_loss += loss.item()
                 num_batches += 1
             
-        avg_val_loss = total_val_loss / num_batches if num_batches > 0 else 0
+        avg_val_loss = total_val_loss / num_batches
         self.model.train() 
         return avg_val_loss
         

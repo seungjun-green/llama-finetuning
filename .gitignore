@@ -3,7 +3,8 @@ __pycache__/
 fine_tuned_checkpoints/
 topics.txt
 keys.py
-*.json 
 save_script.py
 output.txt
-personal*.json
+test.ipynb
+train-v1.1.json
+dev-v1.1.json

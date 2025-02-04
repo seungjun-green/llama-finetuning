@@ -1,0 +1,11 @@
+[
+    {
+        "input": "Context: The captial of Frace is Paris.\nQuestion:Captial of France?\nAnswer:",
+        "label": "Paris"
+    },   
+    {
+        "input": "Context: The captial of Frace is Paris.\nQuestion:Captial of France?\nAnswer:",
+        "label": "Paris"
+    }
+]
+
