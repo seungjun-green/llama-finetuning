@@ -10,23 +10,23 @@ class DoRALinear(nn.Module):
         self.d, self.k = original_linear.weight.shape
 
         m = torch.norm(original_linear.weight, dim=0, keepdim=True)
-        self.m = nn.Parameter(m)  # [1, k]
+        self.dora_m = nn.Parameter(m)  # [1, k]
         self.V = original_linear.weight.clone().detach() # [d, k]
         
         # initalize vlaues of B as zeros and values of A to
         # follow kaiming distribution as shown in the paper
-        self.B = nn.Parameter(torch.zeros(self.d, r))  # [d, r]
-        self.A = nn.Parameter(torch.empty(r, self.k))  # [r, k]
+        self.dora_B = nn.Parameter(torch.zeros(self.d, r))  # [d, r]
+        self.dora_A = nn.Parameter(torch.empty(r, self.k))  # [r, k]
         nn.init.kaiming_uniform_(self.A, a=torch.sqrt(torch.tensor(5.0)))
         
         # set the bias
         self.bias = original_linear.bias if original_linear.bias is not None else None
 
     def forward(self, x):
-        delta_V = self.B @ self.A  # [d, r] @ [r, k] -> [d, k]
+        delta_V = self.dora_B @ self.dora_A  # [d, r] @ [r, k] -> [d, k]
         V_prime = self.V + delta_V  # [d, k]
         norm_V_prime = torch.norm(V_prime, dim=0, keepdim=True).detach()  # [1, k]
-        W_prime = self.m * (V_prime / norm_V_prime)  # [d, k]
+        W_prime = self.dora_m * (V_prime / norm_V_prime)  # [d, k]
         # set a linear layer with the W_prime and do the forward propagation with x
         return torch.nn.functional.linear(x, W_prime, self.bias)
 
