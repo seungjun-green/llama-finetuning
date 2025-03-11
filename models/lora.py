@@ -9,30 +9,24 @@ from models.base_model import load_base_model
 class LoRALinear(nn.Module):
     def __init__(self, linear_layer, rank=8, alpha=16.0, dropout=0.0):
         super().__init__()
-        # Extract dimensions and weights from the provided nn.Linear
-        self.in_dim = linear_layer.weight.size(1)  # Input features
-        self.out_dim = linear_layer.weight.size(0)  # Output features
+        self.in_dim = linear_layer.weight.size(1) 
+        self.out_dim = linear_layer.weight.size(0)
         self.rank = rank
         self.alpha = alpha
         self.dropout = nn.Dropout(dropout)
 
-        # Frozen base weight and bias
+        # froze weight and bias
         self.weight = nn.Parameter(linear_layer.weight.clone(), requires_grad=False)
         self.bias = nn.Parameter(linear_layer.bias.clone(), requires_grad=False) if linear_layer.bias is not None else None
 
-        # LoRA parameters (A and B matrices)
-        self.lora_A = nn.Parameter(torch.empty(self.in_dim, rank))  # Shape: [in_dim, rank]
-        self.lora_B = nn.Parameter(torch.zeros(rank, self.out_dim))  # Shape: [rank, out_dim]
-
-        # Initialize parameters
+        # LoRA parameters
+        self.lora_A = nn.Parameter(torch.empty(self.in_dim, rank)) # (in_dim, rank)
+        self.lora_B = nn.Parameter(torch.zeros(rank, self.out_dim)) # (rank, out_dim)
         nn.init.kaiming_uniform_(self.lora_A, a=5**0.5)
-        # lora_B is already zero-initialized by torch.zeros
 
     def forward(self, x):
-        # Base linear transformation
         frozen_out = torch.nn.functional.linear(x, self.weight, self.bias)
-        # LoRA adjustment
-        lora_out = (self.dropout(x) @ self.lora_A) @ self.lora_B  # [batch, in_dim] @ [in_dim, rank] @ [rank, out_dim]
+        lora_out = (self.dropout(x) @ self.lora_A) @ self.lora_B # [batch, in_dim] @ [in_dim, rank] @ [rank, out_dim]
         return frozen_out + (self.alpha / self.rank) * lora_out
 
 def add_lora_to_model(model, rank=8, alpha=16.0):
