@@ -2,34 +2,41 @@ import torch
 from torch import nn
 from models.base_model import load_base_model
 
+import torch
+from torch import nn
+from models.base_model import load_base_model
+
 class LoRALinear(nn.Module):
-    def __init__(self, in_dim, out_dim, alpha=16.0, rank=8, dropout=0.0, bias=True):
+    def __init__(self, linear_layer, rank=8, alpha=16.0, dropout=0.0):
         super().__init__()
-        self.linear = nn.Linear(in_dim, out_dim, bias=bias)
-        self.linear.weight.requires_grad = False
-        if bias:
-            self.linear.bias.requires_grad = False
-        self.lora_a = nn.Linear(in_dim, rank, bias=False)
-        self.lora_b = nn.Linear(rank, out_dim, bias=False)
+        # Extract dimensions and weights from the provided nn.Linear
+        self.in_dim = linear_layer.weight.size(1)  # Input features
+        self.out_dim = linear_layer.weight.size(0)  # Output features
         self.rank = rank
         self.alpha = alpha
         self.dropout = nn.Dropout(dropout)
-        self.reset_parameters()
 
-    def reset_parameters(self):
-        nn.init.kaiming_uniform_(self.lora_a.weight, a=5**0.5)
-        nn.init.zeros_(self.lora_b.weight)
+        # Frozen base weight and bias
+        self.weight = nn.Parameter(linear_layer.weight.clone(), requires_grad=False)
+        self.bias = nn.Parameter(linear_layer.bias.clone(), requires_grad=False) if linear_layer.bias is not None else None
+
+        # LoRA parameters (A and B matrices)
+        self.lora_A = nn.Parameter(torch.empty(self.in_dim, rank))  # Shape: [in_dim, rank]
+        self.lora_B = nn.Parameter(torch.zeros(rank, self.out_dim))  # Shape: [rank, out_dim]
+
+        # Initialize parameters
+        nn.init.kaiming_uniform_(self.lora_A, a=5**0.5)
+        # lora_B is already zero-initialized by torch.zeros
 
     def forward(self, x):
-        frozen_out = self.linear(x)
-        lora_out = self.lora_b(self.lora_a(self.dropout(x)))
+        # Base linear transformation
+        frozen_out = torch.nn.functional.linear(x, self.weight, self.bias)
+        # LoRA adjustment
+        lora_out = (self.dropout(x) @ self.lora_A) @ self.lora_B  # [batch, in_dim] @ [in_dim, rank] @ [rank, out_dim]
         return frozen_out + (self.alpha / self.rank) * lora_out
-    
-    
-
 
 def add_lora_to_model(model, rank=8, alpha=16.0):
-    # replace the selected nn.Linear layers (e.g q_proj, v_proj) with LoRA layers.
+    """Replace q_proj and v_proj nn.Linear layers with LoRALinear."""
     def get_parent_module(model, module_name):
         parts = module_name.split(".")
         current = model
@@ -41,66 +48,43 @@ def add_lora_to_model(model, rank=8, alpha=16.0):
         return module_name.split(".")[-1]
 
     for name, module in list(model.named_modules()):
-        if "q_proj" in name or "v_proj" in name:
-            if not isinstance(module, nn.Linear):
-                continue
-
-            in_dim = module.weight.size(1)
-            out_dim = module.weight.size(0)
-            bias = module.bias is not None
-
-            lora_module = LoRALinear(in_dim, out_dim, alpha=alpha, rank=rank, bias=bias)
-            with torch.no_grad():
-                lora_module.linear.weight.copy_(module.weight)
-                if bias:
-                    lora_module.linear.bias.copy_(module.bias)
-            
-            # for example if name is 'model.encoder.layer[0].attention.q_proj'
-            # parent becomes 'model.encoder.layer[0]'
-            # and child_name becomes 'q_proj'
+        if name.split(".")[-1] in ["q_proj", "v_proj"] and isinstance(module, nn.Linear):
+            lora_module = LoRALinear(module, rank=rank, alpha=alpha)
             parent = get_parent_module(model, name)
             child_name = get_child_name(name)
             setattr(parent, child_name, lora_module)
 
-    return model
-
 
 def load_lora_applied_model(model_name, lora_checkpoint_path, rank=8, alpha=16.0):
     """
-    1. Load base model & tokenizer.
-    2. Inject LoRALinear layers into q_proj & v_proj.
-    3. Load LoRA weights into those layers.
-    4. Return (tokenizer, lora_model).
+    Load a base model, inject LoRALinear layers into q_proj and v_proj,
+    load LoRA weights from a checkpoint, and return tokenizer and model.
     """
-    # 1. Load the base
+    # Load base model and tokenizer
     tokenizer, base_model = load_base_model(model_name)
 
-    # 2. Inject LoRA layers
+    # Inject LoRA layers
     lora_model = add_lora_to_model(base_model, rank=rank, alpha=alpha)
 
-    # 3. Load LoRA checkpoint
+    # Load LoRA checkpoint
     lora_state_dict = torch.load(lora_checkpoint_path, map_location="cpu")
 
-    # 4. Copy parameters
+    # Update LoRA parameters
     with torch.no_grad():
         for key, param in lora_state_dict.items():
-            splitted = key.split(".")
-            # everything except the last two is the module path
-            module_path = splitted[:-2]
-            # second-last is "lora_a" or "lora_b"
-            submodule_name = splitted[-2]
-            # last is "weight" (most likely)
-            weight_name = splitted[-1]
+            try:
+                module_path = key.split(".")[:-1]  # All but last part (e.g., "weight")
+                param_name = key.split(".")[-1]
+                module = lora_model
+                for attr in module_path:
+                    module = getattr(module, attr)
+                getattr(module, param_name).copy_(param)
+            except AttributeError:
+                print(f"[WARNING] Skipping {key}: not found in model")
 
-            module = lora_model
-            for attr in module_path:
-                module = getattr(module, attr)
-
-            submodule = getattr(module, submodule_name)
-            getattr(submodule, weight_name).copy_(param)
-
+    # Log injected modules
     for name, module in lora_model.named_modules():
         if isinstance(module, LoRALinear):
-            print(f"[INFO] LoRA module injected at: {name}")
+            print(f"[INFO] LoRA injected at {name}: A={module.lora_A.shape}, B={module.lora_B.shape}")
 
     return tokenizer, lora_model

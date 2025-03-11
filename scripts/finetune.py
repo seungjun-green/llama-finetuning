@@ -103,6 +103,23 @@ class Finetuner:
 
         torch.save(lora_state_dict, os.path.join(save_directory, check_name))
         
+    
+    def save_dora_weights(self, model, save_directory, check_name):
+        os.makedirs(save_directory, exist_ok=True)
+        dora_state_dict = {}
+        
+        for name, module in model.named_modules():
+            if isinstance(module, DoRALinear):
+                # Save trainable DoRA parameters
+                dora_state_dict[f"{name}.dora_m"] = module.m.detach().cpu()
+                dora_state_dict[f"{name}.dora_B"] = module.B.detach().cpu()
+                dora_state_dict[f"{name}.dora_A"] = module.A.detach().cpu()
+        
+        # Save the state dictionary to a file
+        save_path = os.path.join(save_directory, check_name)
+        torch.save(dora_state_dict, save_path)
+        print(f"[INFO] DoRA weights saved to {save_path}")
+        
     def get_val_loss(self):
         self.model.eval()
         total_val_loss = 0.0
@@ -170,9 +187,13 @@ class Finetuner:
                         self.best_val_loss = val_loss
                         self.no_improvement_count = 0
                         # save the current checkpoint
-                        self.save_lora_weights(self.model,
-                                        self.config.output_dir,
-                                        f"epoch{epoch}_step{step}_loss{round(val_loss, 4)}")
+                        if self.finetune_method == "lora":
+                            self.save_lora_weights(self.model, self.config.output_dir, f"epoch{epoch}_step{step}_loss{round(val_loss, 4)}")
+                        elif self.finetune_method == "dora":
+                            self.save_dora_weights(self.model, self.config.output_dir, f"epoch{epoch}_step{step}_loss{round(val_loss, 4)}")
+                        else:
+                            print("Bro, what the hack ru doing? r u nuts. smh.")
+                            
                     else:
                         self.no_improvement_count += 1
                         

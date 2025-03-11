@@ -31,7 +31,6 @@ class DoRALinear(nn.Module):
         return torch.nn.functional.linear(x, W_prime, self.bias)
 
 
-
 def add_dora_to_model(model, targets=['q_proj', 'v_proj'], rank=8):
     def get_parent_module(model, module_name):
         parts = module_name.split(".")
