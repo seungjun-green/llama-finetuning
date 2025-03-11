@@ -1,20 +1,20 @@
+import os
 import torch
 import torch.nn as nn
 from torch.optim import AdamW
 from torch.cuda.amp import autocast, GradScaler
 from transformers import get_scheduler
 from tqdm import tqdm
-from models.lora import add_lora_to_model
 from utils.helpers import count_params
 from data.json_data import create_dataloaders
 from configs.finetune_config import FineTuneConfig
 from models.base_model import load_base_model
-import os
 from models.lora import LoRALinear
-import torch
-
+from models.lora import add_lora_to_model
+from models.dora import DoRALinear
+from models.dora import add_dora_to_model
 class Finetuner:
-    def __init__(self, config_filepath, **kwargs):
+    def __init__(self, finetune_method, config_filepath, **kwargs):
         self.config = FineTuneConfig(config_path=config_filepath, **kwargs)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model_name = self.config.base_model_name
@@ -37,12 +37,22 @@ class Finetuner:
             self.tokenizer.add_special_tokens({'pad_token': '<|finetune_right_pad_id|>'})
         
         # add LoRA layers to the model
-        self.model = add_lora_to_model(self.model, rank=self.config.lora_rank, alpha=self.config.lora_alpha)
+        # add option here[lora or dora or something else]
+        if finetune_method == "lora":
+            self.model = add_lora_to_model(self.model, rank=self.config.lora_rank, alpha=self.config.lora_alpha)
+        elif finetune_method == "dora":
+            self.model = add_dora_to_model(self.model)
+        else:
+            raise ValueError(f"UnSupported fine tuning method: {finetune_method}")
+        
         self.model.to(self.device)
         
         for name, param in self.model.named_parameters():
-            param.requires_grad = "lora" in name
-
+            if finetune_method == "lora":
+                param.requires_grad = "lora" in name
+            elif finetune_method == "dora":
+                param.requires_grad = "dora" in name
+                
         # Print trainable parameters
         total_params, trainable_params = count_params(self.model)
         print(f"Total parameters: {total_params}")
@@ -86,7 +96,6 @@ class Finetuner:
     def save_lora_weights(self, model, save_directory, check_name):
         os.makedirs(save_directory, exist_ok=True)
         lora_state_dict = {}
-
         for name, module in model.named_modules():
             if isinstance(module, LoRALinear):
                 lora_state_dict[f"{name}.lora_a.weight"] = module.lora_a.weight.detach().cpu()

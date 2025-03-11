@@ -24,6 +24,9 @@ class LoRALinear(nn.Module):
         frozen_out = self.linear(x)
         lora_out = self.lora_b(self.lora_a(self.dropout(x)))
         return frozen_out + (self.alpha / self.rank) * lora_out
+    
+    
+
 
 def add_lora_to_model(model, rank=8, alpha=16.0):
     # replace the selected nn.Linear layers (e.g q_proj, v_proj) with LoRA layers.
@@ -51,7 +54,10 @@ def add_lora_to_model(model, rank=8, alpha=16.0):
                 lora_module.linear.weight.copy_(module.weight)
                 if bias:
                     lora_module.linear.bias.copy_(module.bias)
-
+            
+            # for example if name is 'model.encoder.layer[0].attention.q_proj'
+            # parent becomes 'model.encoder.layer[0]'
+            # and child_name becomes 'q_proj'
             parent = get_parent_module(model, name)
             child_name = get_child_name(name)
             setattr(parent, child_name, lora_module)
