@@ -182,7 +182,6 @@ class Finetuner:
                     self.val_losses.append(val_loss)
                     tqdm.write(f"Epoch {epoch + 1}, Step {step + 1}, Loss: {round(val_loss, 4)}")
                     
-                    
                     if val_loss < self.best_val_loss:
                         self.best_val_loss = val_loss
                         self.no_improvement_count = 0
