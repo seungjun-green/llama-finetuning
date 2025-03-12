@@ -6,7 +6,7 @@ from torch.cuda.amp import autocast, GradScaler
 from transformers import get_scheduler
 from tqdm.notebook import tqdm
 from utils.helpers import count_params
-from data.json_data import create_dataloaders
+from data.json_data import create_dataloader
 from configs.finetune_config import FineTuneConfig
 from models.base_model import load_base_model
 from models.lora import LoRALinear
@@ -63,8 +63,16 @@ class Finetuner:
         self.loss_fn = nn.CrossEntropyLoss(ignore_index=self.tokenizer.pad_token_id)
         
         # Create train dataLoader and val dataloader
-        self.train_dataloader, self.val_loader = create_dataloaders(
+        self.train_dataloader = create_dataloader(
             self.config.train_file_path, 
+            self.tokenizer, 
+            self.config.batch_size, 
+            self.config.max_length,
+            self.config.train_ratio
+        )
+        
+        self.val_dataloader = create_dataloader(
+            self.config.val_file_path, 
             self.tokenizer, 
             self.config.batch_size, 
             self.config.max_length,
