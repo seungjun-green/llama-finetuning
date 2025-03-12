@@ -72,7 +72,7 @@ class Finetuner:
         )
         
         self.val_dataloader = create_dataloader(
-            self.config.val_file_path, 
+            self.config.dev_file_path, 
             self.tokenizer, 
             self.config.batch_size, 
             self.config.max_length,
@@ -135,7 +135,7 @@ class Finetuner:
         num_batches = 0
         
         with torch.amp.autocast('cuda'):
-            for input_ids, labels in self.val_loader:
+            for input_ids, labels in self.val_dataloader:
                 input_ids = input_ids.to(self.device)
                 labels = labels.to(self.device)
                 
