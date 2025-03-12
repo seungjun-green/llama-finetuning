@@ -18,7 +18,7 @@ class Finetuner:
         self.config = FineTuneConfig(config_path=config_filepath, **kwargs)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model_name = self.config.base_model_name
-        
+        self.finetune_method = finetune_method
         # early stopping
         self.best_val_loss = float('inf') 
         self.early_stopping_patience = self.config.patience
