@@ -4,7 +4,7 @@ import torch.nn as nn
 from torch.optim import AdamW
 from torch.cuda.amp import autocast, GradScaler
 from transformers import get_scheduler
-from tqdm import tqdm
+from tqdm.notebook import tqdm
 from utils.helpers import count_params
 from data.json_data import create_dataloaders
 from configs.finetune_config import FineTuneConfig
@@ -26,6 +26,15 @@ class Finetuner:
         
         # load tokenizer and model
         self.tokenizer, self.model = load_base_model(self.model_name)
+        
+        # add LoRA/DoRA layers to the model
+        if finetune_method == "lora":
+            self.model = add_lora_to_model(self.model, rank=self.config.lora_rank, alpha=self.config.lora_alpha)
+        elif finetune_method == "dora":
+            self.model = add_dora_to_model(self.model)
+        else:
+            raise ValueError(f"UnSupported fine tuning method: {finetune_method}")
+        
         self.model = self.model.to(self.device)
         
         # fp16 setting
@@ -36,16 +45,6 @@ class Finetuner:
         if self.tokenizer.pad_token is None:
             self.tokenizer.add_special_tokens({'pad_token': '<|finetune_right_pad_id|>'})
         
-        # add LoRA layers to the model
-        # add option here[lora or dora or something else]
-        if finetune_method == "lora":
-            self.model = add_lora_to_model(self.model, rank=self.config.lora_rank, alpha=self.config.lora_alpha)
-        elif finetune_method == "dora":
-            self.model = add_dora_to_model(self.model)
-        else:
-            raise ValueError(f"UnSupported fine tuning method: {finetune_method}")
-        
-        self.model.to(self.device)
         
         for name, param in self.model.named_parameters():
             if finetune_method == "lora":
@@ -57,6 +56,8 @@ class Finetuner:
         total_params, trainable_params = count_params(self.model)
         print(f"Total parameters: {total_params}")
         print(f"Trainable parameters: {trainable_params}")
+        
+        
         
         # Loss function
         self.loss_fn = nn.CrossEntropyLoss(ignore_index=self.tokenizer.pad_token_id)
@@ -125,7 +126,7 @@ class Finetuner:
         total_val_loss = 0.0
         num_batches = 0
         
-        with torch.no_grad():
+        with torch.amp.autocast('cuda'):
             for input_ids, labels in self.val_loader:
                 input_ids = input_ids.to(self.device)
                 labels = labels.to(self.device)
@@ -156,7 +157,7 @@ class Finetuner:
                 self.optimizer.zero_grad()
                 
                 if self.use_fp16:
-                    with autocast():
+                    with torch.amp.autocast('cuda'):
                         outputs = self.model(input_ids=input_ids, labels=labels)
                         logits = outputs.logits
                         loss = self.loss_fn(logits.view(-1, logits.size(-1)), labels.view(-1))

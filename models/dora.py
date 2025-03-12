@@ -48,3 +48,5 @@ def add_dora_to_model(model, targets=['q_proj', 'v_proj'], rank=8):
             parent = get_parent_module(model, name)
             child = get_child_name(name)
             setattr(parent, child, dora_module)
+            
+    return model

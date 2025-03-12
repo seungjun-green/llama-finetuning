@@ -47,6 +47,9 @@ def add_lora_to_model(model, rank=8, alpha=16.0):
             parent = get_parent_module(model, name)
             child_name = get_child_name(name)
             setattr(parent, child_name, lora_module)
+            
+
+    return model
 
 
 def load_lora_applied_model(model_name, lora_checkpoint_path, rank=8, alpha=16.0):
