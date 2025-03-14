@@ -8,8 +8,8 @@ def save_lora_weights(model, save_directory, check_name):
 
     for name, module in model.named_modules():
         if isinstance(module, LoRALinear):
-            lora_state_dict[f"{name}.lora_a.weight"] = module.lora_a.weight.detach().cpu()
-            lora_state_dict[f"{name}.lora_b.weight"] = module.lora_b.weight.detach().cpu()
+            lora_state_dict[f"{name}.lora_A.weight"] = module.lora_A.weight.detach().cpu()
+            lora_state_dict[f"{name}.lora_B.weight"] = module.lora_B.weight.detach().cpu()
 
     torch.save(lora_state_dict, os.path.join(save_directory, check_name))
     

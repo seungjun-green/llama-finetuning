@@ -7,7 +7,7 @@
     "max_seq_length": 512,
     "num_epochs": 3,
     "output_dir": "./fine_tuned_checkpoints",
-    "log_steps": 500,
+    "log_steps": 800,
     "device": "cuda",
     "use_fp16": true,
     "warmup_ratio": 0.1,
