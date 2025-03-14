@@ -2,7 +2,6 @@ import os
 import torch
 import torch.nn as nn
 from torch.optim import AdamW
-from torch.cuda.amp import autocast, GradScaler
 from transformers import get_scheduler
 from tqdm.notebook import tqdm
 from utils.helpers import count_params
@@ -39,7 +38,7 @@ class Finetuner:
         
         # fp16 setting
         self.use_fp16 = getattr(self.config, "use_fp16", False)
-        self.scaler = GradScaler() if self.use_fp16 else None
+        self.scaler = torch.GradScaler('cuda') if self.use_fp16 else None
         
         # set the pad token
         if self.tokenizer.pad_token is None:
@@ -107,10 +106,11 @@ class Finetuner:
         lora_state_dict = {}
         for name, module in model.named_modules():
             if isinstance(module, LoRALinear):
-                lora_state_dict[f"{name}.lora_a.weight"] = module.lora_a.weight.detach().cpu()
-                lora_state_dict[f"{name}.lora_b.weight"] = module.lora_b.weight.detach().cpu()
-
+                lora_state_dict[f"{name}.lora_A"] = module.lora_A.detach().cpu()
+                lora_state_dict[f"{name}.lora_B"] = module.lora_B.detach().cpu()
+        
         torch.save(lora_state_dict, os.path.join(save_directory, check_name))
+        print(f"[INFO] LoRA weights saved to {os.path.join(save_directory, check_name)}")
         
     
     def save_dora_weights(self, model, save_directory, check_name):
@@ -134,13 +134,13 @@ class Finetuner:
         total_val_loss = 0.0
         num_batches = 0
         
-        with torch.amp.autocast('cuda'):
+        with torch.autocast('cuda'):
             for input_ids, labels in self.val_dataloader:
                 input_ids = input_ids.to(self.device)
                 labels = labels.to(self.device)
                 
                 if self.use_fp16:
-                    with autocast():
+                    with torch.autocast('cuda'):
                         outputs = self.model(input_ids=input_ids, labels=labels)
                 else:
                     outputs = self.model(input_ids=input_ids, labels=labels)
@@ -165,7 +165,7 @@ class Finetuner:
                 self.optimizer.zero_grad()
                 
                 if self.use_fp16:
-                    with torch.amp.autocast('cuda'):
+                    with torch.autocast('cuda'):
                         outputs = self.model(input_ids=input_ids, labels=labels)
                         logits = outputs.logits
                         loss = self.loss_fn(logits.view(-1, logits.size(-1)), labels.view(-1))
