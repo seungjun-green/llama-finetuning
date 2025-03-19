@@ -17,14 +17,14 @@ class DoRALinear(nn.Module):
         # follow kaiming distribution as shown in the paper
         self.dora_B = nn.Parameter(torch.zeros(self.d, r))  # [d, r]
         self.dora_A = nn.Parameter(torch.empty(r, self.k))  # [r, k]
-        nn.init.kaiming_uniform_(self.A, a=torch.sqrt(torch.tensor(5.0)))
+        nn.init.kaiming_uniform_(self.dora_A)
         
         # set the bias
         self.bias = original_linear.bias if original_linear.bias is not None else None
 
     def forward(self, x):
         delta_V = self.dora_B @ self.dora_A  # [d, r] @ [r, k] -> [d, k]
-        V_prime = self.V + delta_V  # [d, k]
+        V_prime = self.V.to(delta_V.device) + delta_V  # [d, k]
         norm_V_prime = torch.norm(V_prime, dim=0, keepdim=True).detach()  # [1, k]
         W_prime = self.dora_m * (V_prime / norm_V_prime)  # [d, k]
         # set a linear layer with the W_prime and do the forward propagation with x
