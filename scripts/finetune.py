@@ -121,8 +121,8 @@ class Finetuner:
             if isinstance(module, DoRALinear):
                 # Save trainable DoRA parameters
                 dora_state_dict[f"{name}.dora_m"] = module.dora_m.detach().cpu()
-                dora_state_dict[f"{name}.dora_B"] = module.B.detach().cpu()
-                dora_state_dict[f"{name}.dora_A"] = module.A.detach().cpu()
+                dora_state_dict[f"{name}.dora_B"] = module.dora_B.detach().cpu()
+                dora_state_dict[f"{name}.dora_A"] = module.dora_A.detach().cpu()
         
         # Save the state dictionary to a file
         save_path = os.path.join(save_directory, check_name)

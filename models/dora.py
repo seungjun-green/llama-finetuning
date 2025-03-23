@@ -12,7 +12,6 @@ class DoRALinear(nn.Module):
         m = torch.norm(original_linear.weight, dim=0, keepdim=True)
         self.dora_m = nn.Parameter(m)  # [1, k]
         self.V = original_linear.weight.clone().detach() # [d, k]
-        
         # initalize vlaues of B as zeros and values of A to
         # follow kaiming distribution as shown in the paper
         self.dora_B = nn.Parameter(torch.zeros(self.d, r))  # [d, r]
