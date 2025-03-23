@@ -120,7 +120,7 @@ class Finetuner:
         for name, module in model.named_modules():
             if isinstance(module, DoRALinear):
                 # Save trainable DoRA parameters
-                dora_state_dict[f"{name}.dora_m"] = module.m.detach().cpu()
+                dora_state_dict[f"{name}.dora_m"] = module.dora_m.detach().cpu()
                 dora_state_dict[f"{name}.dora_B"] = module.B.detach().cpu()
                 dora_state_dict[f"{name}.dora_A"] = module.A.detach().cpu()
         
