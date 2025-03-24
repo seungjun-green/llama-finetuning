@@ -91,6 +91,15 @@ llama-finetuning/
 │   ├── helpers.py     # Helper functions
 ```
 
+
+
+## Experiments
+I evaluated the performance of fine-tuning the LLaMA model using two methods: LoRA and DoRA. The results are as follows:
+
+- LoRA: Achieved a loss score of 1.5245
+- DoRA: Achieved a loss score of 1.3891
+
+As demonstrated in the DoRA paper, fine-tuning the LLaMA model with DoRA resulted in a lower loss score compared to LoRA
 ---
 
 ## Requirements
