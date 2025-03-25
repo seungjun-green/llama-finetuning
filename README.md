@@ -34,8 +34,8 @@ Sample Dataset format
         "label": "Paris"
     },
     {
-        "input": "Context: I love Elon Musk. Question: Who is the smartest guy in the world?\nAnswer:",
-        "label": "Elon Musk"
+        "input": "Context: Twenty years from now you will be more disappointed by the things that you didn't do than by the ones you did do. Question: So what u gonna do?\nAnswer:",
+        "label": "YES"
     }
 ]
 ```
