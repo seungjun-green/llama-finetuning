@@ -31,6 +31,8 @@ class Finetuner:
             self.model = add_lora_to_model(self.model, rank=self.config.lora_rank, alpha=self.config.lora_alpha)
         elif finetune_method == "dora":
             self.model = add_dora_to_model(self.model)
+        elif finetune_method == "full":
+            pass # do nothing
         else:
             raise ValueError(f"UnSupported fine tuning method: {finetune_method}")
         
@@ -55,8 +57,6 @@ class Finetuner:
         total_params, trainable_params = count_params(self.model)
         print(f"Total parameters: {total_params}")
         print(f"Trainable parameters: {trainable_params}")
-        
-        
         
         # Loss function
         self.loss_fn = nn.CrossEntropyLoss(ignore_index=self.tokenizer.pad_token_id)
@@ -111,6 +111,12 @@ class Finetuner:
         
         torch.save(lora_state_dict, os.path.join(save_directory, check_name))
         print(f"[INFO] LoRA weights saved to {os.path.join(save_directory, check_name)}")
+        
+    def save_full_weights(self, model, save_directory, check_name):
+        os.makedirs(save_directory, exist_ok=True)
+        save_path = os.path.join(save_directory, check_name)
+        torch.save(model.state_dict(), save_path)
+        print(f"[INFO] Full model weights saved to {save_path}")
         
     
     def save_dora_weights(self, model, save_directory, check_name):
@@ -199,6 +205,8 @@ class Finetuner:
                             self.save_lora_weights(self.model, self.config.output_dir, f"epoch{epoch}_step{step}_loss{round(val_loss, 4)}")
                         elif self.finetune_method == "dora":
                             self.save_dora_weights(self.model, self.config.output_dir, f"epoch{epoch}_step{step}_loss{round(val_loss, 4)}")
+                        elif self.finetune_method == "full":
+                            self.save_full_weights(self.model, self.config.output_dir, f"epoch{epoch}_step{step}_loss{round(val_loss, 4)}")
                         else:
                             print("Bro, what the hack ru doing? r u nuts. smh.")
                             
