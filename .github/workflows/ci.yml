@@ -1,0 +1,29 @@
+name: Llama-CI-Pipeline
+
+on:
+  push:
+    branches: [ "main", "master" ] # This runs the robot whenever you push code
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Harbor
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ vars.HARBOR_REGISTRY }}
+          username: ${{ secrets.HARBOR_USERNAME }}
+          password: ${{ secrets.HARBOR_PASSWORD }}
+
+      - name: Build and Push to Harbor
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ vars.HARBOR_REGISTRY }}/${{ vars.HARBOR_PROJECT }}/${{ vars.IMAGE_NAME }}:latest
+            ${{ vars.HARBOR_REGISTRY }}/${{ vars.HARBOR_PROJECT }}/${{ vars.IMAGE_NAME }}:${{ github.sha }}
